@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
-    // alias(libs.plugins.google.services) // habilitar cuando google-services.json esté listo
+    alias(libs.plugins.google.services)
 }
 
 android {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "429230301866",
+    "project_id": "quiniela-virtual-ee3b5",
+    "storage_bucket": "quiniela-virtual-ee3b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:429230301866:android:9e5aa5fb3167e7001366d3",
+        "android_client_info": {
+          "package_name": "com.example.quiniela_virtual_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8o2OllmNhHflKSZlLUG-2regbSDwIXe8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -15,8 +15,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.quiniela_virtual_app.domain.model.Usuario
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
+import java.time.Instant
 import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
@@ -53,5 +56,45 @@ private fun PerfilContent(usuario: Usuario, onCerrarSesion: () -> Unit) {
         Button(onClick = onCerrarSesion, modifier = Modifier.fillMaxWidth()) {
             Text("Cerrar sesión")
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Perfil — usuario normal")
+@Composable
+private fun PerfilPreview() {
+    QuinielaTheme {
+        PerfilContent(
+            usuario = Usuario(
+                uid = "u1",
+                nombre = "Brian Tzuc",
+                email = "brian@ejemplo.com",
+                fotoUrl = null,
+                esAdmin = false,
+                activo = true,
+                creadoEn = Instant.now(),
+                ultimoAcceso = Instant.now(),
+            ),
+            onCerrarSesion = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Perfil — administrador")
+@Composable
+private fun PerfilAdminPreview() {
+    QuinielaTheme {
+        PerfilContent(
+            usuario = Usuario(
+                uid = "u2",
+                nombre = "Admin Principal",
+                email = "admin@ejemplo.com",
+                fotoUrl = null,
+                esAdmin = true,
+                activo = true,
+                creadoEn = Instant.now(),
+                ultimoAcceso = Instant.now(),
+            ),
+            onCerrarSesion = {},
+        )
     }
 }

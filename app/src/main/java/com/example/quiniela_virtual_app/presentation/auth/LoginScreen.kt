@@ -1,6 +1,9 @@
 package com.example.quiniela_virtual_app.presentation.auth
 
+import android.content.res.Configuration
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,8 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,12 +31,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.quiniela_virtual_app.presentation.shared.UiState
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
 
+/** Agrupa los campos del formulario para mantener [LoginContent] con ≤ 7 parámetros. */
+private data class FormularioLogin(
+    val email: String,
+    val password: String,
+    val nombre: String,
+    val modoLogin: Boolean,
+)
+
+/** Pantalla pública: conecta él [LoginViewModel] con la UI stateless [LoginContent]. */
 @Composable
 fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
     val loginState by viewModel.loginState.collectAsState()
@@ -37,70 +59,140 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
     var nombre by remember { mutableStateOf("") }
     var modoLogin by remember { mutableStateOf(true) }
 
+    LoginContent(
+        loginState = loginState,
+        formulario = FormularioLogin(email, password, nombre, modoLogin),
+        onEmailChange = { email = it },
+        onPasswordChange = { password = it },
+        onNombreChange = { nombre = it },
+        onModoChange = { modoLogin = !modoLogin; viewModel.resetState() },
+        onAccion = { dispararAccion(modoLogin, email, password, nombre, viewModel) },
+    )
+}
+
+/** UI stateless del formulario de auth; recibe estado y callbacks sin depender del ViewModel. */
+@Composable
+private fun LoginContent(
+    loginState: UiState<Unit>,
+    formulario: FormularioLogin,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onModoChange: () -> Unit,
+    onAccion: () -> Unit,
+) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Quiniela Virtual", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(32.dp))
-
-        if (!modoLogin) {
-            OutlinedTextField(
-                value = nombre,
-                onValueChange = { nombre = it },
-                label = { Text("Nombre") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            Spacer(Modifier.height(8.dp))
-        }
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        )
-        Spacer(Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Contraseña") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        )
+        LogoQuiniela()
         Spacer(Modifier.height(16.dp))
 
-        if (loginState is UiState.Error) {
-            Text(
-                text = (loginState as UiState.Error).mensaje,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Spacer(Modifier.height(8.dp))
-        }
+        Text(
+            text = "Quiniela Virtual",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = "Predice · Compite · Gana",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(40.dp))
 
-        Button(
-            onClick = { dispararAccion(modoLogin, email, password, nombre, viewModel) },
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            enabled = loginState !is UiState.Loading,
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
-            ContenidoBotonAccion(loginState, modoLogin)
-        }
-        Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = if (formulario.modoLogin) "Iniciar sesión" else "Crear cuenta",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
 
-        TextButton(onClick = { modoLogin = !modoLogin; viewModel.resetState() }) {
-            Text(if (modoLogin) "¿No tienes cuenta? Regístrate" else "¿Ya tienes cuenta? Inicia sesión")
+                if (!formulario.modoLogin) {
+                    OutlinedTextField(
+                        value = formulario.nombre,
+                        onValueChange = onNombreChange,
+                        label = { Text("Nombre completo") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+
+                OutlinedTextField(
+                    value = formulario.email,
+                    onValueChange = onEmailChange,
+                    label = { Text("Correo electrónico") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                )
+
+                OutlinedTextField(
+                    value = formulario.password,
+                    onValueChange = onPasswordChange,
+                    label = { Text("Contraseña") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                )
+
+                if (loginState is UiState.Error) {
+                    Text(
+                        text = loginState.mensaje,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                Button(
+                    onClick = onAccion,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = loginState !is UiState.Loading,
+                ) {
+                    ContenidoBotonAccion(loginState, formulario.modoLogin)
+                }
+            }
+        }
+
+        TextButton(onClick = onModoChange) {
+            Text(
+                text = if (formulario.modoLogin) "¿No tienes cuenta? Regístrate"
+                       else "¿Ya tienes cuenta? Inicia sesión",
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
 
+/** Ícono circular con balón de fútbol que representa la app en la pantalla de login. */
+@Composable
+private fun LogoQuiniela() {
+    Box(
+        modifier = Modifier
+            .size(100.dp)
+            .background(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = "⚽", fontSize = 52.sp)
+    }
+}
+
+/** Delega la acción del botón al ViewModel según el modo actual (login o registro). */
 private fun dispararAccion(
     modoLogin: Boolean,
     email: String,
@@ -112,11 +204,51 @@ private fun dispararAccion(
     else viewModel.registrar(email, password, nombre)
 }
 
+/** Muestra spinner mientras carga o el texto del botón cuando está disponible. */
 @Composable
 private fun ContenidoBotonAccion(loginState: UiState<Unit>, modoLogin: Boolean) {
     if (loginState is UiState.Loading) {
         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
     } else {
-        Text(if (modoLogin) "Iniciar sesión" else "Registrarse")
+        Text(if (modoLogin) "Entrar" else "Registrarse")
+    }
+}
+
+@Preview(showBackground = true, name = "Login — modo claro")
+@Composable
+private fun LoginPreview() {
+    QuinielaTheme {
+        LoginContent(
+            loginState = UiState.Success(Unit),
+            formulario = FormularioLogin("brian@ejemplo.com", "••••••", "", true),
+            onEmailChange = {}, onPasswordChange = {}, onNombreChange = {},
+            onModoChange = {}, onAccion = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Login — modo oscuro", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun LoginOscuroPreview() {
+    QuinielaTheme(darkTheme = true) {
+        LoginContent(
+            loginState = UiState.Success(Unit),
+            formulario = FormularioLogin("brian@ejemplo.com", "••••••", "", true),
+            onEmailChange = {}, onPasswordChange = {}, onNombreChange = {},
+            onModoChange = {}, onAccion = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Login — registro")
+@Composable
+private fun RegistroPreview() {
+    QuinielaTheme {
+        LoginContent(
+            loginState = UiState.Success(Unit),
+            formulario = FormularioLogin("", "", "Brian Tzuc", false),
+            onEmailChange = {}, onPasswordChange = {}, onNombreChange = {},
+            onModoChange = {}, onAccion = {},
+        )
     }
 }

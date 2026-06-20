@@ -34,8 +34,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.quiniela_virtual_app.domain.model.Equipo
+import com.example.quiniela_virtual_app.domain.model.EstadoPartido
 import com.example.quiniela_virtual_app.domain.model.Partido
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
+import java.time.Instant
 import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.EstadoBadge
@@ -166,5 +171,33 @@ private fun AdminPartidoCard(
                 ) { Text("OK") }
             }
         }
+    }
+}
+
+private fun adminPartidoFake() = Partido(
+    id = "p2", jornada = 3, grupo = "B", fase = "Grupos",
+    equipoLocal = Equipo("México", "MX"),
+    equipoVisitante = Equipo("Argentina", "AR"),
+    fecha = Instant.now(), sede = "Estadio Azteca",
+    golesLocal = 1, golesVisitante = 0,
+    estado = EstadoPartido.FINALIZADO,
+)
+
+@Preview(showBackground = true, name = "Admin — tarjeta de partido")
+@Composable
+private fun AdminPartidoCardPreview() {
+    QuinielaTheme {
+        AdminPartidoCard(
+            partido = adminPartidoFake(),
+            onActualizar = { _, _, _ -> },
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Admin — acciones globales")
+@Composable
+private fun AccionesGlobalesPreview() {
+    QuinielaTheme {
+        AccionesGlobales(cargando = false, onSincronizar = {}, onRestablecer = {})
     }
 }

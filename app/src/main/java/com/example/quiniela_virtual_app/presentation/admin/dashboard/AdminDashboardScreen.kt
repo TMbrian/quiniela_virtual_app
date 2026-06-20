@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,5 +59,17 @@ private fun AdminCard(titulo: String, descripcion: String, onClick: () -> Unit) 
             Spacer(Modifier.height(4.dp))
             Text(descripcion, style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Admin — dashboard")
+@Composable
+private fun AdminDashboardPreview() {
+    QuinielaTheme {
+        AdminDashboardScreen(
+            onAbrirPartidos = {},
+            onAbrirUsuarios = {},
+            onAbrirConfig = {},
+        )
     }
 }

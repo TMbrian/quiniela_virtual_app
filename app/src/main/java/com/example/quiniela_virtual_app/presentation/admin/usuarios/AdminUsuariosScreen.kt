@@ -25,8 +25,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.quiniela_virtual_app.domain.model.Usuario
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
+import java.time.Instant
 import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
@@ -88,5 +91,37 @@ private fun UsuarioCard(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Admin — usuario normal")
+@Composable
+private fun UsuarioCardPreview() {
+    QuinielaTheme {
+        UsuarioCard(
+            usuario = Usuario(
+                uid = "u1", nombre = "Brian Tzuc", email = "brian@ejemplo.com",
+                fotoUrl = null, esAdmin = false, activo = true,
+                creadoEn = Instant.now(), ultimoAcceso = Instant.now(),
+            ),
+            onToggleAdmin = {},
+            onToggleActivo = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Admin — usuario deshabilitado")
+@Composable
+private fun UsuarioCardDeshabilitadoPreview() {
+    QuinielaTheme {
+        UsuarioCard(
+            usuario = Usuario(
+                uid = "u2", nombre = "Ana García", email = "ana@ejemplo.com",
+                fotoUrl = null, esAdmin = false, activo = false,
+                creadoEn = Instant.now(), ultimoAcceso = Instant.now(),
+            ),
+            onToggleAdmin = {},
+            onToggleActivo = {},
+        )
     }
 }

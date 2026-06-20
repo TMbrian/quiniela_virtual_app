@@ -32,9 +32,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.quiniela_virtual_app.domain.model.Equipo
+import com.example.quiniela_virtual_app.domain.model.EstadoPartido
 import com.example.quiniela_virtual_app.domain.model.EstadoPrediccion
 import com.example.quiniela_virtual_app.domain.model.Partido
+import com.example.quiniela_virtual_app.domain.model.Prediccion
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
+import java.time.Instant
 import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.EstadoBadge
@@ -194,4 +200,36 @@ private fun cardColors(bloqueado: Boolean) = if (bloqueado) {
     CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 } else {
     CardDefaults.cardColors()
+}
+
+private fun partidoFake() = Partido(
+    id = "p1", jornada = 1, grupo = "A", fase = "Grupos",
+    equipoLocal = Equipo("México", "MX"),
+    equipoVisitante = Equipo("Estados Unidos", "US"),
+    fecha = Instant.now(), sede = "Estadio Azteca",
+    golesLocal = null, golesVisitante = null,
+    estado = EstadoPartido.PROGRAMADO,
+)
+
+@Preview(showBackground = true, name = "Partido — abierto sin predicción")
+@Composable
+private fun PartidoCardAbiertoPreview() {
+    QuinielaTheme {
+        PartidoCard(
+            item = PartidoConPrediccion(partidoFake(), null, EstadoPrediccion.ABIERTO),
+            onGuardar = { _, _, _ -> },
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Partido — bloqueado con predicción")
+@Composable
+private fun PartidoCardBloqueadoPreview() {
+    val pred = Prediccion("u1", "p1", 2, 1, Instant.now(), Instant.now())
+    QuinielaTheme {
+        PartidoCard(
+            item = PartidoConPrediccion(partidoFake(), pred, EstadoPrediccion.BLOQUEADO),
+            onGuardar = { _, _, _ -> },
+        )
+    }
 }

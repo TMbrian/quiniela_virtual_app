@@ -55,7 +55,10 @@ class LoginViewModel @Inject constructor(
                 crearPerfil(uid, nombre, email)
             }.fold(
                 onSuccess = { _loginState.value = UiState.Success(Unit) },
-                onFailure = { e -> _loginState.value = UiState.Error(mensajeError(e)) },
+                onFailure = { e ->
+                    auth.signOut()
+                    _loginState.value = UiState.Error(mensajeError(e))
+                },
             )
         }
     }

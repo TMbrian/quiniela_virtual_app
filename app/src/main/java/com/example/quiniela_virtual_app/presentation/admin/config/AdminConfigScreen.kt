@@ -27,8 +27,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.quiniela_virtual_app.domain.model.ConfiguracionApp
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
+import java.time.Instant
 import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
@@ -135,4 +138,25 @@ private fun CampoNumero(label: String, value: String, onValueChange: (String) ->
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
     )
+}
+
+@Preview(showBackground = true, name = "Admin — configuración")
+@Composable
+private fun ConfigFormPreview() {
+    QuinielaTheme {
+        ConfigForm(
+            config = ConfiguracionApp(
+                nombreCompeticion = "Quiniela Mundial 2026",
+                descripcion = "Quiniela privada de amigos",
+                temporada = "2026",
+                puntosExacto = 3,
+                puntosTendencia = 1,
+                lockAnticipacionMin = 60,
+                activa = true,
+                creadaEn = Instant.now(),
+                actualizadaEn = Instant.now(),
+            ),
+            onGuardar = { _, _, _, _, _, _, _ -> },
+        )
+    }
 }
