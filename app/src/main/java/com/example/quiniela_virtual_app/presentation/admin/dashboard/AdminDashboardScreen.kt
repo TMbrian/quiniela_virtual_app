@@ -217,14 +217,14 @@ private fun MedallaOro() {
     Box(
         modifier = Modifier
             .size(38.dp)
-            .background(color = Color(0xFFFFD700), shape = CircleShape),
+            .background(color = Color(0xFFFF8C00), shape = CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "1",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF5D4037),
+            color = Color.White,
         )
     }
 }

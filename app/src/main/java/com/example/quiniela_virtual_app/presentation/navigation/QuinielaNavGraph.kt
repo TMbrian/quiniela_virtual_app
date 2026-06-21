@@ -12,7 +12,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -129,7 +131,13 @@ private fun CuentaDeshabilitadaScreen(onCerrarSesion: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text("Contacta al administrador.")
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onCerrarSesion) { Text("Cerrar sesión") }
+            Button(
+                onClick = onCerrarSesion,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+            ) { Text("Cerrar sesión") }
         }
     }
 }

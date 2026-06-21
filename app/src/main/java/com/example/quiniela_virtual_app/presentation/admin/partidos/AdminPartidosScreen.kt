@@ -17,7 +17,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -116,7 +119,13 @@ private fun AccionesGlobales(
             if (cargando) CircularProgressIndicator(modifier = Modifier.width(16.dp), strokeWidth = 2.dp)
             else Text("Sincronizar API")
         }
-        OutlinedButton(onClick = onRestablecer, enabled = !cargando, modifier = Modifier.weight(1f)) {
+        OutlinedButton(
+            onClick = onRestablecer,
+            enabled = !cargando,
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+        ) {
             Text("Restablecer")
         }
     }
@@ -382,6 +391,10 @@ private fun SeccionEstado(
     onCambiarEstado: (Partido, EstadoPartido) -> Unit,
 ) {
     val estados = EstadoPartido.entries
+    val coloresProg  = SegmentedButtonDefaults.colors(activeContainerColor = Color(0xFF546E7A), activeContentColor = Color.White)
+    val coloresVivo  = SegmentedButtonDefaults.colors(activeContainerColor = Color(0xFF1B8A3B), activeContentColor = Color.White)
+    val coloresFinal = SegmentedButtonDefaults.colors(activeContainerColor = Color(0xFF1565C0), activeContentColor = Color.White)
+    val coloresSusp  = SegmentedButtonDefaults.colors(activeContainerColor = Color(0xFFC62828), activeContentColor = Color.White)
     Column {
         Text(
             text = "Estado",
@@ -397,6 +410,12 @@ private fun SeccionEstado(
                     onClick = { onCambiarEstado(partido, estado) },
                     shape = SegmentedButtonDefaults.itemShape(index, estados.size),
                     label = { Text(etiquetaEstado(estado)) },
+                    colors = when (estado) {
+                        EstadoPartido.PROGRAMADO -> coloresProg
+                        EstadoPartido.EN_VIVO    -> coloresVivo
+                        EstadoPartido.FINALIZADO -> coloresFinal
+                        EstadoPartido.SUSPENDIDO -> coloresSusp
+                    },
                 )
             }
         }
@@ -468,11 +487,11 @@ private fun SeccionLockOverride(
             Button(
                 onClick = { onAbrirPredicciones(partido, DURACIONES_LOCK[duracionIdx].first) },
                 modifier = Modifier.weight(1f),
-            ) { Text("Abrir predicciones") }
+            ) { Text("Desbloquear") }
             OutlinedButton(
                 onClick = { onForzarBloqueo(partido) },
                 modifier = Modifier.weight(1f),
-            ) { Text("Forzar cierre") }
+            ) { Text("Bloquear") }
         }
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,7 +54,14 @@ private fun PerfilContent(usuario: Usuario, onCerrarSesion: () -> Unit) {
             style = MaterialTheme.typography.labelMedium,
         )
         Spacer(Modifier.height(32.dp))
-        Button(onClick = onCerrarSesion, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = onCerrarSesion,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+            ),
+        ) {
             Text("Cerrar sesión")
         }
     }

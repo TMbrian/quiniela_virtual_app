@@ -129,7 +129,7 @@ private fun PosicionBadge(numero: Int) {
 }
 
 private fun badgeColores(numero: Int): Pair<Color, Color> = when (numero) {
-    1    -> Color(0xFFFFD700) to Color(0xFF5D4037)
+    1    -> Color(0xFFFF8C00) to Color.White
     2    -> Color(0xFFC0C0C0) to Color(0xFF37474F)
     3    -> Color(0xFFCD7F32) to Color.White
     else -> Color(0xFFE0E0E0) to Color(0xFF424242)
