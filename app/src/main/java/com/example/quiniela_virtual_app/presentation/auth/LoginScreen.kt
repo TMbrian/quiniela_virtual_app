@@ -13,14 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -107,10 +107,12 @@ private fun LoginContent(
         )
         Spacer(Modifier.height(40.dp))
 
-        Card(
+        // Se reemplazó Card por Surface para corregir el conflicto de tipos del compilador
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(12.dp), // Mantiene la estética de bordes redondeados tipo Card
+            shadowElevation = 4.dp,
+            color = MaterialTheme.colorScheme.surface,
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -172,7 +174,7 @@ private fun LoginContent(
         TextButton(onClick = onModoChange) {
             Text(
                 text = if (formulario.modoLogin) "¿No tienes cuenta? Regístrate"
-                       else "¿Ya tienes cuenta? Inicia sesión",
+                else "¿Ya tienes cuenta? Inicia sesión",
                 color = MaterialTheme.colorScheme.primary,
             )
         }
@@ -185,11 +187,15 @@ private fun LogoQuiniela() {
     Box(
         modifier = Modifier
             .size(100.dp)
-            .background(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape),
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = CircleShape,
+            ),
         contentAlignment = Alignment.Center,
-    ) {
-        Text(text = "⚽", fontSize = 52.sp)
-    }
+        content = {
+            Text(text = "⚽", fontSize = 52.sp)
+        },
+    )
 }
 
 /** Delega la acción del botón al ViewModel según el modo actual (login o registro). */
