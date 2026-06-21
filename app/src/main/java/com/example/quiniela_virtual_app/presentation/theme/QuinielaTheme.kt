@@ -15,11 +15,11 @@ private val Verde40  = Color(0xFF1B6B3A)
 private val Verde80  = Color(0xFF8CD9A3)
 private val Verde90  = Color(0xFFA8F5BE)
 
-private val Naranja20 = Color(0xFF4E1500)
-private val Naranja30 = Color(0xFF772100)
-private val Naranja40 = Color(0xFFD84315)
-private val Naranja80 = Color(0xFFFF8A65)
-private val Naranja90 = Color(0xFFFBE9E7)
+private val Teal20   = Color(0xFF003D36)
+private val Teal30   = Color(0xFF005048)
+private val Teal40   = Color(0xFF00695C)
+private val Teal80   = Color(0xFF80CBC4)
+private val Teal90   = Color(0xFFE0F2F1)
 
 private val Azul20   = Color(0xFF00306A)
 private val Azul30   = Color(0xFF004793)
@@ -42,10 +42,10 @@ private val LightColors = lightColorScheme(
     primaryContainer     = Verde90,
     onPrimaryContainer   = Verde20,
 
-    secondary            = Naranja40,
+    secondary            = Teal40,
     onSecondary          = Color.White,
-    secondaryContainer   = Naranja90,
-    onSecondaryContainer = Naranja20,
+    secondaryContainer   = Teal90,
+    onSecondaryContainer = Teal20,
 
     tertiary             = Azul40,
     onTertiary           = Color.White,
@@ -64,10 +64,10 @@ private val DarkColors = darkColorScheme(
     primaryContainer     = Verde30,
     onPrimaryContainer   = Verde90,
 
-    secondary            = Naranja80,
-    onSecondary          = Naranja20,
-    secondaryContainer   = Naranja30,
-    onSecondaryContainer = Naranja90,
+    secondary            = Teal80,
+    onSecondary          = Teal20,
+    secondaryContainer   = Teal30,
+    onSecondaryContainer = Teal90,
 
     tertiary             = Azul80,
     onTertiary           = Azul20,
