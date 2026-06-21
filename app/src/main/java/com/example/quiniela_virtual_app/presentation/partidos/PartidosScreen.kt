@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
@@ -29,13 +30,17 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.SubcomposeAsyncImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,8 +70,10 @@ import java.util.Locale
 @Composable
 fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     val secciones by viewModel.secciones.collectAsState()
+    val uiStateValue by viewModel.uiState.collectAsState()
     val filtro by viewModel.filtroEstado.collectAsState()
     val guardarError by viewModel.guardarError.collectAsState()
+    val lockMs = (uiStateValue as? UiState.Success)?.data?.lockAnticipacionMs ?: 60 * 60_000L
     val snackbarHost = remember { SnackbarHostState() }
 
     LaunchedEffect(guardarError) {
@@ -82,6 +89,7 @@ fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
                 is UiState.Error   -> ErrorMessage(estado.mensaje)
                 is UiState.Success -> PartidosPorSecciones(
                     secciones = estado.data,
+                    lockAnticipacionMs = lockMs,
                     onGuardar = viewModel::guardarPrediccion,
                 )
             }
@@ -119,6 +127,7 @@ private fun FiltrosChips(
 @Composable
 private fun PartidosPorSecciones(
     secciones: List<PartidoJornadaSeccion>,
+    lockAnticipacionMs: Long,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
     if (secciones.isEmpty()) {
@@ -137,7 +146,7 @@ private fun PartidosPorSecciones(
                     GrupoSubHeader(grupo.nombre)
                 }
                 items(grupo.items, key = { it.partido.id }) { item ->
-                    PartidoCard(item = item, onGuardar = onGuardar)
+                    PartidoCard(item = item, lockAnticipacionMs = lockAnticipacionMs, onGuardar = onGuardar)
                 }
             }
         }
@@ -196,6 +205,7 @@ private fun GrupoSubHeader(nombre: String) {
 @Composable
 private fun PartidoCard(
     item: PartidoConPrediccion,
+    lockAnticipacionMs: Long,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
     val bloqueado = item.estadoPrediccion == EstadoPrediccion.BLOQUEADO
@@ -214,7 +224,7 @@ private fun PartidoCard(
             Spacer(Modifier.height(6.dp))
             FechaYSede(item.partido)
             HorizontalDivider(Modifier.padding(vertical = 10.dp))
-            SeccionPrediccion(item = item, onGuardar = onGuardar)
+            SeccionPrediccion(item = item, lockAnticipacionMs = lockAnticipacionMs, onGuardar = onGuardar)
         }
     }
 }
@@ -249,26 +259,35 @@ private fun FilaEquiposYMarcador(partido: Partido) {
 
 @Composable
 private fun EquipoDisplay(equipo: Equipo, modifier: Modifier = Modifier) {
+    val inicialesColors = MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = equipo.iso.take(3).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
+        SubcomposeAsyncImage(
+            model = equipo.crestUrl,
+            contentDescription = equipo.nombre,
+            modifier = Modifier.size(40.dp),
+            contentScale = ContentScale.Fit,
+            loading = {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            },
+            error = {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(color = inicialesColors.first, shape = CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = equipo.iso.take(3).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = inicialesColors.second,
+                    )
+                }
+            },
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             text = equipo.nombre,
@@ -311,11 +330,12 @@ private fun FechaYSede(partido: Partido) {
 @Composable
 private fun SeccionPrediccion(
     item: PartidoConPrediccion,
+    lockAnticipacionMs: Long,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
     when {
         item.estadoPrediccion == EstadoPrediccion.ABIERTO ->
-            FormularioPrediccion(item = item, onGuardar = onGuardar)
+            FormularioPrediccion(item = item, lockAnticipacionMs = lockAnticipacionMs, onGuardar = onGuardar)
         item.partido.estado == EstadoPartido.FINALIZADO ->
             ResultadoFinalizadoSection(partido = item.partido, prediccion = item.prediccion)
         else ->
@@ -326,8 +346,18 @@ private fun SeccionPrediccion(
 @Composable
 private fun FormularioPrediccion(
     item: PartidoConPrediccion,
+    lockAnticipacionMs: Long,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
+    var ahora by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            ahora = System.currentTimeMillis()
+        }
+    }
+    val restanteMs = item.partido.fecha.toEpochMilli() - lockAnticipacionMs - ahora
+
     var gL by remember(item.prediccion) {
         mutableStateOf(item.prediccion?.golesLocal?.toString() ?: "")
     }
@@ -335,12 +365,19 @@ private fun FormularioPrediccion(
         mutableStateOf(item.prediccion?.golesVisitante?.toString() ?: "")
     }
     Column {
-        Text(
-            text = if (item.prediccion != null) "Tu predicción" else "Predice el marcador",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = if (item.prediccion != null) "Tu predicción" else "Predice el marcador",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (restanteMs in 1..<86_400_000L) CountdownChip(restanteMs)
+        }
         Spacer(Modifier.height(8.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -362,6 +399,24 @@ private fun FormularioPrediccion(
             }
         }
     }
+}
+
+@Composable
+private fun CountdownChip(restanteMs: Long) {
+    val h = restanteMs / 3_600_000
+    val m = (restanteMs % 3_600_000) / 60_000
+    val s = (restanteMs % 60_000) / 1_000
+    val texto = when {
+        h > 0 -> "${h}h ${m.toString().padStart(2, '0')}m"
+        m > 0 -> "${m}m ${s.toString().padStart(2, '0')}s"
+        else  -> "${s}s"
+    }
+    Text(
+        text = "Cierra en $texto",
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.error,
+    )
 }
 
 @Composable
@@ -479,6 +534,7 @@ private fun PartidoCardAbiertoPreview() {
     QuinielaTheme {
         PartidoCard(
             item = PartidoConPrediccion(partidoFake(), null, EstadoPrediccion.ABIERTO),
+            lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
         )
     }
@@ -490,6 +546,7 @@ private fun PartidoCardConPrediccionPreview() {
     QuinielaTheme {
         PartidoCard(
             item = PartidoConPrediccion(partidoFake(), prediccionFake(), EstadoPrediccion.ABIERTO),
+            lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
         )
     }
@@ -505,6 +562,7 @@ private fun PartidoCardFinalizadoPreview() {
                 prediccion = prediccionFake(),
                 estadoPrediccion = EstadoPrediccion.BLOQUEADO,
             ),
+            lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
         )
     }
@@ -516,6 +574,7 @@ private fun PartidoCardBloqueadoPreview() {
     QuinielaTheme {
         PartidoCard(
             item = PartidoConPrediccion(partidoFake(estado = EstadoPartido.EN_VIVO), null, EstadoPrediccion.BLOQUEADO),
+            lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
         )
     }
