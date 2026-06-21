@@ -35,6 +35,20 @@ android {
         )
     }
 
+    flavorDimensions += "target"
+    productFlavors {
+        create("publico") {
+            dimension = "target"
+            buildConfigField("Boolean", "IS_ADMIN_BUILD", "false")
+        }
+        create("admin") {
+            dimension = "target"
+            applicationIdSuffix = ".admin"
+            versionNameSuffix = "-admin"
+            buildConfigField("Boolean", "IS_ADMIN_BUILD", "true")
+        }
+    }
+
     buildTypes {
         release {
             optimization {
@@ -93,6 +107,7 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.logging)
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit4)
     testImplementation(libs.junit.jupiter)

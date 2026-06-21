@@ -33,6 +33,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.quiniela_virtual_app.BuildConfig
 import com.example.quiniela_virtual_app.presentation.admin.config.AdminConfigScreen
 import com.example.quiniela_virtual_app.presentation.admin.dashboard.AdminDashboardScreen
 import com.example.quiniela_virtual_app.presentation.admin.partidos.AdminPartidosScreen
@@ -48,7 +49,7 @@ fun QuinielaNavGraph() {
     val loginViewModel: LoginViewModel = hiltViewModel()
     val estaAutenticado by loginViewModel.estaAutenticado.collectAsState()
     val usuarioActual by loginViewModel.usuarioActual.collectAsState()
-    val esAdmin = usuarioActual?.esAdmin == true
+    val esAdmin = usuarioActual?.esAdmin == true && BuildConfig.IS_ADMIN_BUILD
     val estaActivo = usuarioActual?.activo != false
 
     when {
@@ -72,16 +73,18 @@ private fun AppPrincipal(loginViewModel: LoginViewModel, esAdmin: Boolean) {
             composable(Screen.Perfil.route)      {
                 PerfilScreen(onCerrarSesion = { loginViewModel.cerrarSesion() })
             }
-            composable(Screen.AdminDashboard.route) {
-                AdminDashboardScreen(
-                    onAbrirPartidos = { navController.navigate(Screen.AdminPartidos.route) },
-                    onAbrirUsuarios = { navController.navigate(Screen.AdminUsuarios.route) },
-                    onAbrirConfig   = { navController.navigate(Screen.AdminConfig.route) },
-                )
+            if (BuildConfig.IS_ADMIN_BUILD) {
+                composable(Screen.AdminDashboard.route) {
+                    AdminDashboardScreen(
+                        onAbrirPartidos = { navController.navigate(Screen.AdminPartidos.route) },
+                        onAbrirUsuarios = { navController.navigate(Screen.AdminUsuarios.route) },
+                        onAbrirConfig   = { navController.navigate(Screen.AdminConfig.route) },
+                    )
+                }
+                composable(Screen.AdminPartidos.route) { AdminPartidosScreen() }
+                composable(Screen.AdminUsuarios.route) { AdminUsuariosScreen() }
+                composable(Screen.AdminConfig.route)   { AdminConfigScreen() }
             }
-            composable(Screen.AdminPartidos.route) { AdminPartidosScreen() }
-            composable(Screen.AdminUsuarios.route) { AdminUsuariosScreen() }
-            composable(Screen.AdminConfig.route)   { AdminConfigScreen() }
         }
     }
 }
