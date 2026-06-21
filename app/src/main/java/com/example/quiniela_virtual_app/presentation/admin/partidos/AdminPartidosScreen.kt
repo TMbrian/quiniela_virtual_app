@@ -461,6 +461,10 @@ private fun SeccionLockOverride(
     onForzarBloqueo: (Partido) -> Unit,
 ) {
     var duracionIdx by remember { mutableStateOf(0) }
+    val ahora = System.currentTimeMillis()
+    val estaDesbloqueado = partido.lockOverride == false &&
+        partido.lockOverrideExpiry != null &&
+        ahora < partido.lockOverrideExpiry!!.toEpochMilli()
 
     Column {
         Text(
@@ -469,9 +473,7 @@ private fun SeccionLockOverride(
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.secondary,
         )
-        Spacer(Modifier.height(4.dp))
-        EstadoLockText(partido)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             DURACIONES_LOCK.forEachIndexed { index, (_, etiqueta) ->
                 SegmentedButton(
@@ -483,15 +485,26 @@ private fun SeccionLockOverride(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = { onAbrirPredicciones(partido, DURACIONES_LOCK[duracionIdx].first) },
-                modifier = Modifier.weight(1f),
-            ) { Text("Desbloquear") }
-            OutlinedButton(
-                onClick = { onForzarBloqueo(partido) },
-                modifier = Modifier.weight(1f),
-            ) { Text("Bloquear") }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "Permitir predicciones",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                EstadoLockText(partido)
+            }
+            Switch(
+                checked = estaDesbloqueado,
+                onCheckedChange = { abrir ->
+                    if (abrir) onAbrirPredicciones(partido, DURACIONES_LOCK[duracionIdx].first)
+                    else onForzarBloqueo(partido)
+                },
+            )
         }
     }
 }

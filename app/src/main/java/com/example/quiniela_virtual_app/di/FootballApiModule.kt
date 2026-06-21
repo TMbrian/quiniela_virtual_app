@@ -1,5 +1,6 @@
 package com.example.quiniela_virtual_app.di
 
+import com.example.quiniela_virtual_app.BuildConfig
 import com.example.quiniela_virtual_app.data.remote.FootballApiInterceptor
 import com.example.quiniela_virtual_app.data.remote.api.FootballApiService
 import dagger.Module
@@ -24,7 +25,8 @@ object FootballApiModule {
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(FootballApiInterceptor())
         .addInterceptor(HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
+                    else HttpLoggingInterceptor.Level.NONE
         })
         .build()
 

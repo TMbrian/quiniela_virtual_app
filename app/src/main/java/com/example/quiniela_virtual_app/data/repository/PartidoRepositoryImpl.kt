@@ -18,16 +18,12 @@ class PartidoRepositoryImpl @Inject constructor(
     private val apiService: FootballApiService,
 ) : PartidoRepository {
 
-    companion object {
-        private const val CODIGO_COMPETICION = "WC"
-    }
-
     override fun observarPartidos(): Flow<List<Partido>> =
         source.observar().map { lista -> lista.map { it.toDomain() } }
 
-    /** Descarga los partidos del Mundial desde football-data.org y los guarda en Firestore. */
-    override suspend fun sincronizarDesdeApi(): Result<Int> = runCatching {
-        val partidos = apiService.obtenerPartidos(CODIGO_COMPETICION).matches
+    override suspend fun sincronizarDesdeApi(codigoApi: String): Result<Int> = runCatching {
+        val partidos = apiService.obtenerPartidos(codigoApi).matches
+            .filter { it.id != null }
             .map { it.toDomain() }
         source.sincronizar(partidos).getOrThrow()
         partidos.size

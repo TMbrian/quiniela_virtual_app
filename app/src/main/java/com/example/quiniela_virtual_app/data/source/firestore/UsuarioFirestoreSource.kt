@@ -5,9 +5,12 @@ import com.example.quiniela_virtual_app.data.dto.toFirestoreMap
 import com.example.quiniela_virtual_app.domain.model.Usuario
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,18 +22,20 @@ class UsuarioFirestoreSource @Inject constructor(
 ) {
     private val coleccion get() = firestore.collection("usuarios")
 
-    fun observarActual(): Flow<UsuarioDto?> = callbackFlow {
-        val uid = auth.currentUser?.uid
-        if (uid == null) {
-            trySend(null)
-            close()
-            return@callbackFlow
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun observarActual(): Flow<UsuarioDto?> = callbackFlow<String?> {
+        val authListener = FirebaseAuth.AuthStateListener { trySend(it.currentUser?.uid) }
+        auth.addAuthStateListener(authListener)
+        awaitClose { auth.removeAuthStateListener(authListener) }
+    }.flatMapLatest { uid ->
+        if (uid == null) return@flatMapLatest flowOf(null)
+        callbackFlow {
+            val registration = coleccion.document(uid).addSnapshotListener { doc, err ->
+                if (err != null) { close(err); return@addSnapshotListener }
+                trySend(doc?.toObject(UsuarioDto::class.java)?.copy(uid = doc.id))
+            }
+            awaitClose { registration.remove() }
         }
-        val listener = coleccion.document(uid).addSnapshotListener { snap, err ->
-            if (err != null) { close(err); return@addSnapshotListener }
-            trySend(snap?.toObject(UsuarioDto::class.java)?.copy(uid = snap.id))
-        }
-        awaitClose { listener.remove() }
     }
 
     fun observarTodos(): Flow<List<UsuarioDto>> = callbackFlow {

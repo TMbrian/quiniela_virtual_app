@@ -36,11 +36,14 @@ import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.Alignment
 
 @Composable
 fun AdminConfigScreen(viewModel: AdminConfigViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val esNueva by viewModel.esConfigNueva.collectAsState()
     val mensaje by viewModel.guardadoEstado.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
 
@@ -56,7 +59,8 @@ fun AdminConfigScreen(viewModel: AdminConfigViewModel = hiltViewModel()) {
             is UiState.Error   -> ErrorMessage(estado.mensaje)
             is UiState.Success -> ConfigForm(
                 config = estado.data,
-                onGuardar = { n, d, t, pE, pT, lM, a -> viewModel.guardar(n, d, t, pE, pT, lM, a) },
+                esNueva = esNueva,
+                onGuardar = { n, d, t, c, pE, pT, lM, a -> viewModel.guardar(n, d, t, c, pE, pT, lM, a) },
                 modifier = Modifier.padding(paddingValues),
             )
         }
@@ -66,12 +70,14 @@ fun AdminConfigScreen(viewModel: AdminConfigViewModel = hiltViewModel()) {
 @Composable
 private fun ConfigForm(
     config: ConfiguracionApp,
-    onGuardar: (String, String, String, Int, Int, Int, Boolean) -> Unit,
+    esNueva: Boolean,
+    onGuardar: (String, String, String, String, Int, Int, Int, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var nombre by remember(config) { mutableStateOf(config.nombreCompeticion) }
     var descripcion by remember(config) { mutableStateOf(config.descripcion) }
     var temporada by remember(config) { mutableStateOf(config.temporada) }
+    var codigoApi by remember(config) { mutableStateOf(config.codigoApi) }
     var puntosExacto by remember(config) { mutableStateOf(config.puntosExacto.toString()) }
     var puntosTendencia by remember(config) { mutableStateOf(config.puntosTendencia.toString()) }
     var lockMin by remember(config) { mutableStateOf(config.lockAnticipacionMin.toString()) }
@@ -83,12 +89,14 @@ private fun ConfigForm(
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
     ) {
+        if (esNueva) BannerPrimerUso()
         Text("Configuración de la quiniela", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(16.dp))
 
         CampoTexto("Nombre de la competición", nombre) { nombre = it }
         CampoTexto("Descripción", descripcion) { descripcion = it }
         CampoTexto("Temporada", temporada) { temporada = it }
+        CampoTexto("Código API (ej. WC, PL, BL1)", codigoApi) { codigoApi = it }
 
         Spacer(Modifier.height(8.dp))
         CampoNumero("Puntos por acierto exacto", puntosExacto) { puntosExacto = it }
@@ -106,6 +114,7 @@ private fun ConfigForm(
             onClick = {
                 onGuardar(
                     nombre, descripcion, temporada,
+                    codigoApi.trim().uppercase(),
                     puntosExacto.toIntOrNull() ?: config.puntosExacto,
                     puntosTendencia.toIntOrNull() ?: config.puntosTendencia,
                     lockMin.toIntOrNull() ?: config.lockAnticipacionMin,
@@ -114,6 +123,23 @@ private fun ConfigForm(
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Guardar configuración") }
+    }
+}
+
+@Composable
+private fun BannerPrimerUso() {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Text(
+            text = "Primera configuración — completa los campos y guarda para inicializar la quiniela.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.padding(12.dp),
+        )
     }
 }
 
@@ -149,6 +175,7 @@ private fun ConfigFormPreview() {
                 nombreCompeticion = "Quiniela Mundial 2026",
                 descripcion = "Quiniela privada de amigos",
                 temporada = "2026",
+                codigoApi = "WC",
                 puntosExacto = 3,
                 puntosTendencia = 1,
                 lockAnticipacionMin = 60,
@@ -156,7 +183,8 @@ private fun ConfigFormPreview() {
                 creadaEn = Instant.now(),
                 actualizadaEn = Instant.now(),
             ),
-            onGuardar = { _, _, _, _, _, _, _ -> },
+            esNueva = false,
+            onGuardar = { _, _, _, _, _, _, _, _ -> },
         )
     }
 }

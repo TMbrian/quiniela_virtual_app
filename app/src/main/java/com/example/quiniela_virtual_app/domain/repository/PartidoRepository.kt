@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface PartidoRepository {
     fun observarPartidos(): Flow<List<Partido>>
-    suspend fun sincronizarDesdeApi(): Result<Int>
+    suspend fun sincronizarDesdeApi(codigoApi: String): Result<Int>
     suspend fun actualizarResultado(partidoId: String, golesLocal: Int, golesVisitante: Int): Result<Unit>
     suspend fun cambiarEstado(partidoId: String, estado: EstadoPartido): Result<Unit>
     suspend fun setLockOverride(partidoId: String, unlock: Boolean, expiryMs: Long?): Result<Unit>

@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function datosUsuario(uid) {
+      return get(/databases/$(database)/documents/usuarios/$(uid)).data;
+    }
+
+    function esAdminActivo() {
+      return estaAutenticado()
+          && datosUsuario(request.auth.uid).esAdmin == true
+          && datosUsuario(request.auth.uid).activo  == true;
+    }
+
+    function esPropioUsuario(uid) {
+      return estaAutenticado() && request.auth.uid == uid;
+    }
+
+    function esUsuarioActivo() {
+      return estaAutenticado()
+          && datosUsuario(request.auth.uid).activo == true;
+    }
+
+    // ── /config/app ──────────────────────────────────────────────────────────
+    // Solo lectura para usuarios activos. Solo escritura para admins.
+
+    match /config/app {
+      allow read:  if esUsuarioActivo();
+      allow write: if esAdminActivo();
+    }
+
+    // ── /partidos/{partidoId} ────────────────────────────────────────────────
+    // Lectura para todos los usuarios activos. Escritura solo admin.
+
+    match /partidos/{partidoId} {
+      allow read:  if esUsuarioActivo();
+      allow write: if esAdminActivo();
+    }
+
+    // ── /usuarios/{uid} ──────────────────────────────────────────────────────
+
+    match /usuarios/{uid} {
+      // Lectura: el propio usuario o un admin
+      allow read: if esPropioUsuario(uid) || esAdminActivo();
+
+      // Crear perfil: solo el propio usuario recién registrado.
+      // esAdmin DEBE ser false — nadie se auto-asigna admin.
+      allow create: if esPropioUsuario(uid)
+                    && request.resource.data.esAdmin == false
+                    && request.resource.data.activo  == true
+                    && request.resource.data.uid     == uid;
+
+      // Actualizar: el propio usuario no puede tocar esAdmin/activo/uid.
+      // Un admin puede actualizar cualquier campo de cualquier usuario.
+      allow update: if (esPropioUsuario(uid)
+                        && !request.resource.data.diff(resource.data)
+                            .affectedKeys().hasAny(['esAdmin', 'activo', 'uid']))
+                    || esAdminActivo();
+
+      allow delete: if esAdminActivo();
+    }
+
+    // ── /predicciones/{uid}/partidos/{partidoId} ─────────────────────────────
+    // El propio usuario lee y escribe sus predicciones. Admin lee todas.
+    // La validación de "partido ABIERTO" ocurre en la capa Domain de la app —
+    // las Rules no pueden leer el estado del partido en tiempo real de forma
+    // eficiente sin incurrir en lecturas extra por escritura.
+
+    match /predicciones/{uid}/partidos/{partidoId} {
+      allow read: if esPropioUsuario(uid) || esAdminActivo();
+
+      allow create, update: if esPropioUsuario(uid)
+                            && esUsuarioActivo()
+                            && request.resource.data.uid      == uid
+                            && request.resource.data.partidoId == partidoId
+                            && request.resource.data.golesLocal is int
+                            && request.resource.data.golesLocal >= 0
+                            && request.resource.data.golesVisitante is int
+                            && request.resource.data.golesVisitante >= 0;
+
+      allow delete: if esAdminActivo();
+    }
+
+    // ── /leaderboard/general ─────────────────────────────────────────────────
+    // Lectura para usuarios activos. Escritura solo admin (recalculo).
+
+    match /leaderboard/general {
+      allow read:  if esUsuarioActivo();
+      allow write: if esAdminActivo();
+    }
+
+    // Cualquier ruta no listada queda denegada implícitamente por Firestore.
+  }
+}

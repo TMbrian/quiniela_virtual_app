@@ -6,6 +6,7 @@ data class ConfiguracionApp(
     val nombreCompeticion: String,
     val descripcion: String,
     val temporada: String,
+    val codigoApi: String,
     val puntosExacto: Int,
     val puntosTendencia: Int,
     val lockAnticipacionMin: Int,

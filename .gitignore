@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Contexto de sesión Claude Code (temporal)
+CLAUDE.md

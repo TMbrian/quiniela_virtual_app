@@ -33,6 +33,7 @@ class AdminConfigViewModel @Inject constructor(
         nombreCompeticion: String,
         descripcion: String,
         temporada: String,
+        codigoApi: String,
         puntosExacto: Int,
         puntosTendencia: Int,
         lockAnticipacionMin: Int,
@@ -40,7 +41,7 @@ class AdminConfigViewModel @Inject constructor(
     ) {
         val actual = (_uiState.value as? UiState.Success)?.data ?: return
         viewModelScope.launch {
-            val config = buildConfig(actual, nombreCompeticion, descripcion, temporada,
+            val config = buildConfig(actual, nombreCompeticion, descripcion, temporada, codigoApi,
                 puntosExacto, puntosTendencia, lockAnticipacionMin, activa)
             configRepository.guardarConfig(config).fold(
                 onSuccess = { _guardadoEstado.value = "Configuración guardada" },
@@ -54,6 +55,7 @@ class AdminConfigViewModel @Inject constructor(
         nombre: String,
         descripcion: String,
         temporada: String,
+        codigoApi: String,
         puntosExacto: Int,
         puntosTendencia: Int,
         lockMin: Int,
@@ -62,6 +64,7 @@ class AdminConfigViewModel @Inject constructor(
         nombreCompeticion = nombre,
         descripcion = descripcion,
         temporada = temporada,
+        codigoApi = codigoApi,
         puntosExacto = puntosExacto,
         puntosTendencia = puntosTendencia,
         lockAnticipacionMin = lockMin,
@@ -69,14 +72,33 @@ class AdminConfigViewModel @Inject constructor(
         actualizadaEn = Instant.now(),
     )
 
+    val esConfigNueva: StateFlow<Boolean> get() = _esConfigNueva
+    private val _esConfigNueva = MutableStateFlow(false)
+
     private fun cargar() {
         viewModelScope.launch {
             configRepository.observarConfig()
                 .catch { e -> _uiState.value = UiState.Error(e.message ?: "Error al cargar config") }
                 .collect { config ->
-                    _uiState.value = if (config != null) UiState.Success(config)
-                                     else UiState.Error("No hay configuración. El admin debe crearla.")
+                    _esConfigNueva.value = config == null
+                    _uiState.value = UiState.Success(config ?: configPorDefecto())
                 }
         }
+    }
+
+    private fun configPorDefecto(): ConfiguracionApp {
+        val ahora = Instant.now()
+        return ConfiguracionApp(
+            nombreCompeticion = "",
+            descripcion = "",
+            temporada = "",
+            codigoApi = "WC",
+            puntosExacto = 5,
+            puntosTendencia = 3,
+            lockAnticipacionMin = 30,
+            activa = true,
+            creadaEn = ahora,
+            actualizadaEn = ahora,
+        )
     }
 }

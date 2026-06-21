@@ -67,16 +67,17 @@ class PartidoFirestoreSource @Inject constructor(
 
     /** Escribe en batch todos los partidos sincronizados desde la API (upsert por ID). */
     suspend fun sincronizar(partidos: List<Partido>): Result<Unit> = runCatching {
-        val batch = firestore.batch()
-        partidos.forEach { partido ->
-            batch.set(coleccion.document(partido.id), partido.toFirestoreMap())
+        partidos.chunked(499).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { partido ->
+                batch.set(coleccion.document(partido.id), partido.toFirestoreMap())
+            }
+            batch.commit().await()
         }
-        batch.commit().await()
     }
 
     suspend fun restablecerTodos(): Result<Unit> = runCatching {
         val docs = coleccion.get().await().documents
-        val batch = firestore.batch()
         val actualizaciones = hashMapOf<String, Any>(
             "estado" to EstadoPartido.PROGRAMADO.name,
             "golesLocal" to FieldValue.delete(),
@@ -84,7 +85,10 @@ class PartidoFirestoreSource @Inject constructor(
             "lockOverride" to FieldValue.delete(),
             "lockOverrideExpiry" to FieldValue.delete(),
         )
-        docs.forEach { doc -> batch.update(doc.reference, actualizaciones) }
-        batch.commit().await()
+        docs.chunked(499).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { doc -> batch.update(doc.reference, actualizaciones) }
+            batch.commit().await()
+        }
     }
 }
