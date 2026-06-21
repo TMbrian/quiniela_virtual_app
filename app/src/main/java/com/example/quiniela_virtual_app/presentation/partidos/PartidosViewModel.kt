@@ -3,6 +3,7 @@ package com.example.quiniela_virtual_app.presentation.partidos
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quiniela_virtual_app.domain.model.ConfiguracionApp
+import com.example.quiniela_virtual_app.domain.model.EstadoPartido
 import com.example.quiniela_virtual_app.domain.model.EstadoPrediccion
 import com.example.quiniela_virtual_app.domain.model.Partido
 import com.example.quiniela_virtual_app.domain.model.Prediccion
@@ -15,10 +16,12 @@ import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
@@ -33,6 +36,9 @@ data class PartidosData(
     val partidos: List<PartidoConPrediccion>,
     val lockAnticipacionMs: Long,
 )
+
+data class PartidoGrupoSeccion(val nombre: String, val items: List<PartidoConPrediccion>)
+data class PartidoJornadaSeccion(val titulo: String, val subtitulo: String, val grupos: List<PartidoGrupoSeccion>)
 
 @HiltViewModel
 class PartidosViewModel @Inject constructor(
@@ -50,9 +56,23 @@ class PartidosViewModel @Inject constructor(
     private val _guardarError = MutableStateFlow<String?>(null)
     val guardarError: StateFlow<String?> = _guardarError.asStateFlow()
 
+    private val _filtroEstado = MutableStateFlow<EstadoPartido?>(null)
+    val filtroEstado: StateFlow<EstadoPartido?> = _filtroEstado.asStateFlow()
+
+    val secciones: StateFlow<UiState<List<PartidoJornadaSeccion>>> =
+        combine(_uiState, _filtroEstado) { estado, filtro ->
+            when (estado) {
+                is UiState.Loading -> UiState.Loading
+                is UiState.Error   -> UiState.Error(estado.mensaje)
+                is UiState.Success -> UiState.Success(agruparEnSecciones(estado.data.partidos, filtro))
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState.Loading)
+
     init { cargar() }
 
     fun limpiarError() { _guardarError.value = null }
+
+    fun filtrarPor(estado: EstadoPartido?) { _filtroEstado.value = estado }
 
     fun guardarPrediccion(partido: Partido, golesLocal: Int, golesVisitante: Int) {
         val uid = auth.currentUser?.uid ?: return
@@ -102,5 +122,65 @@ class PartidosViewModel @Inject constructor(
             .filter { !it.excluido }
             .map { p -> PartidoConPrediccion(p, predMap[p.id], calcularEstado(p, ahora, lockMs)) }
         return PartidosData(items, lockMs)
+    }
+
+    private fun agruparEnSecciones(items: List<PartidoConPrediccion>, filtro: EstadoPartido?): List<PartidoJornadaSeccion> {
+        val filtrados = filtrarItems(items, filtro)
+        val (deGrupos, deEliminacion) = filtrados.partition { it.partido.fase == FASE_GRUPOS }
+        return seccionesGrupos(deGrupos) + seccionesEliminacion(deEliminacion)
+    }
+
+    private fun filtrarItems(items: List<PartidoConPrediccion>, filtro: EstadoPartido?): List<PartidoConPrediccion> {
+        if (filtro == null) return items
+        return items.filter { it.partido.estado == filtro }
+    }
+
+    private fun seccionesGrupos(items: List<PartidoConPrediccion>): List<PartidoJornadaSeccion> =
+        items
+            .groupBy { it.partido.jornada }
+            .entries
+            .sortedBy { it.key }
+            .map { (jornada, porJornada) ->
+                PartidoJornadaSeccion(
+                    titulo = "Jornada $jornada",
+                    subtitulo = FASE_GRUPOS,
+                    grupos = agruparPorGrupo(porJornada),
+                )
+            }
+
+    private fun seccionesEliminacion(items: List<PartidoConPrediccion>): List<PartidoJornadaSeccion> =
+        items
+            .groupBy { it.partido.fase }
+            .entries
+            .sortedBy { ordenFase(it.key) }
+            .map { (fase, porFase) ->
+                PartidoJornadaSeccion(
+                    titulo = fase,
+                    subtitulo = "",
+                    grupos = listOf(PartidoGrupoSeccion("", porFase.sortedBy { it.partido.fecha })),
+                )
+            }
+
+    private fun agruparPorGrupo(items: List<PartidoConPrediccion>): List<PartidoGrupoSeccion> =
+        items
+            .groupBy { it.partido.grupo }
+            .entries
+            .sortedBy { it.key }
+            .map { (grupo, lista) ->
+                PartidoGrupoSeccion(nombre = grupo, items = lista.sortedBy { it.partido.fecha })
+            }
+
+    private fun ordenFase(fase: String): Int = when (fase) {
+        "Grupos"    -> 0
+        "Octavos"   -> 1
+        "Cuartos"   -> 2
+        "Semifinal" -> 3
+        "3er Lugar" -> 4
+        "Final"     -> 5
+        else        -> 99
+    }
+
+    companion object {
+        private const val FASE_GRUPOS = "Grupos"
     }
 }

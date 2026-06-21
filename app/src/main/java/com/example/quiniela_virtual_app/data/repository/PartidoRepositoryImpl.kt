@@ -1,6 +1,8 @@
 package com.example.quiniela_virtual_app.data.repository
 
 import com.example.quiniela_virtual_app.data.dto.toDomain
+import com.example.quiniela_virtual_app.data.remote.api.FootballApiService
+import com.example.quiniela_virtual_app.data.remote.dto.toDomain
 import com.example.quiniela_virtual_app.data.source.firestore.PartidoFirestoreSource
 import com.example.quiniela_virtual_app.domain.model.EstadoPartido
 import com.example.quiniela_virtual_app.domain.model.Partido
@@ -13,13 +15,23 @@ import javax.inject.Singleton
 @Singleton
 class PartidoRepositoryImpl @Inject constructor(
     private val source: PartidoFirestoreSource,
+    private val apiService: FootballApiService,
 ) : PartidoRepository {
+
+    companion object {
+        private const val CODIGO_COMPETICION = "WC"
+    }
 
     override fun observarPartidos(): Flow<List<Partido>> =
         source.observar().map { lista -> lista.map { it.toDomain() } }
 
-    override suspend fun sincronizarDesdeApi(): Result<Int> =
-        Result.failure(UnsupportedOperationException("Integración con API externa pendiente de implementar"))
+    /** Descarga los partidos del Mundial desde football-data.org y los guarda en Firestore. */
+    override suspend fun sincronizarDesdeApi(): Result<Int> = runCatching {
+        val partidos = apiService.obtenerPartidos(CODIGO_COMPETICION).matches
+            .map { it.toDomain() }
+        source.sincronizar(partidos).getOrThrow()
+        partidos.size
+    }
 
     override suspend fun actualizarResultado(
         partidoId: String,

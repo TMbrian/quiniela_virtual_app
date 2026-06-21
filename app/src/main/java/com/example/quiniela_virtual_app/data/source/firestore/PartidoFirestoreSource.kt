@@ -1,7 +1,9 @@
 package com.example.quiniela_virtual_app.data.source.firestore
 
 import com.example.quiniela_virtual_app.data.dto.PartidoDto
+import com.example.quiniela_virtual_app.data.dto.toFirestoreMap
 import com.example.quiniela_virtual_app.domain.model.EstadoPartido
+import com.example.quiniela_virtual_app.domain.model.Partido
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.Timestamp
@@ -62,6 +64,15 @@ class PartidoFirestoreSource @Inject constructor(
         runCatching {
             coleccion.document(id).update("excluido", excluido).await()
         }
+
+    /** Escribe en batch todos los partidos sincronizados desde la API (upsert por ID). */
+    suspend fun sincronizar(partidos: List<Partido>): Result<Unit> = runCatching {
+        val batch = firestore.batch()
+        partidos.forEach { partido ->
+            batch.set(coleccion.document(partido.id), partido.toFirestoreMap())
+        }
+        batch.commit().await()
+    }
 
     suspend fun restablecerTodos(): Result<Unit> = runCatching {
         val docs = coleccion.get().await().documents

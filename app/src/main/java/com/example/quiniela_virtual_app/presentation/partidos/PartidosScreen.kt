@@ -1,5 +1,6 @@
 package com.example.quiniela_virtual_app.presentation.partidos
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,17 +10,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,60 +38,158 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.quiniela_virtual_app.domain.model.Equipo
 import com.example.quiniela_virtual_app.domain.model.EstadoPartido
 import com.example.quiniela_virtual_app.domain.model.EstadoPrediccion
 import com.example.quiniela_virtual_app.domain.model.Partido
 import com.example.quiniela_virtual_app.domain.model.Prediccion
-import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
-import java.time.Instant
 import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.EstadoBadge
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
+import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
-    val uiState by viewModel.uiState.collectAsState()
+    val secciones by viewModel.secciones.collectAsState()
+    val filtro by viewModel.filtroEstado.collectAsState()
     val guardarError by viewModel.guardarError.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
 
     LaunchedEffect(guardarError) {
-        guardarError?.let {
-            snackbarHost.showSnackbar(it)
-            viewModel.limpiarError()
-        }
+        guardarError?.let { snackbarHost.showSnackbar(it); viewModel.limpiarError() }
     }
 
     Box(Modifier.fillMaxSize()) {
-        when (val estado = uiState) {
-            is UiState.Loading -> LoadingIndicator()
-            is UiState.Error   -> ErrorMessage(estado.mensaje)
-            is UiState.Success -> PartidosList(estado.data, viewModel::guardarPrediccion)
+        Column(Modifier.fillMaxSize()) {
+            FiltrosChips(filtroActual = filtro, onFiltroChange = viewModel::filtrarPor)
+            HorizontalDivider()
+            when (val estado = secciones) {
+                is UiState.Loading -> LoadingIndicator()
+                is UiState.Error   -> ErrorMessage(estado.mensaje)
+                is UiState.Success -> PartidosPorSecciones(
+                    secciones = estado.data,
+                    onGuardar = viewModel::guardarPrediccion,
+                )
+            }
         }
         SnackbarHost(hostState = snackbarHost, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
+private val FILTROS: List<Pair<EstadoPartido?, String>> = listOf(
+    null to "Todos",
+    EstadoPartido.EN_VIVO to "En vivo",
+    EstadoPartido.PROGRAMADO to "Por jugar",
+    EstadoPartido.FINALIZADO to "Finalizados",
+)
+
 @Composable
-private fun PartidosList(
-    data: PartidosData,
+private fun FiltrosChips(
+    filtroActual: EstadoPartido?,
+    onFiltroChange: (EstadoPartido?) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(FILTROS, key = { it.second }) { (estado, etiqueta) ->
+            FilterChip(
+                selected = filtroActual == estado,
+                onClick = { onFiltroChange(estado) },
+                label = { Text(etiqueta) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PartidosPorSecciones(
+    secciones: List<PartidoJornadaSeccion>,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
-    if (data.partidos.isEmpty()) {
+    if (secciones.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("El administrador aún no ha cargado partidos.")
         }
         return
     }
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)) {
-        items(data.partidos, key = { it.partido.id }) { item ->
-            PartidoCard(item = item, onGuardar = onGuardar)
+    LazyColumn(Modifier.fillMaxSize()) {
+        secciones.forEach { seccion ->
+            stickyHeader(key = "jornada_${seccion.titulo}") {
+                JornadaHeader(seccion)
+            }
+            seccion.grupos.forEach { grupo ->
+                item(key = "grupo_${seccion.titulo}_${grupo.nombre}") {
+                    GrupoSubHeader(grupo.nombre)
+                }
+                items(grupo.items, key = { it.partido.id }) { item ->
+                    PartidoCard(item = item, onGuardar = onGuardar)
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun JornadaHeader(seccion: PartidoJornadaSeccion) {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = seccion.titulo,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            if (seccion.subtitulo.isNotBlank()) {
+                Text(
+                    text = seccion.subtitulo,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GrupoSubHeader(nombre: String) {
+    if (nombre.isBlank() || nombre == "-") return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        HorizontalDivider(Modifier.weight(1f))
+        Text(
+            text = "Grupo $nombre",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        HorizontalDivider(Modifier.weight(1f))
     }
 }
 
@@ -93,102 +199,36 @@ private fun PartidoCard(
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
     val bloqueado = item.estadoPrediccion == EstadoPrediccion.BLOQUEADO
-    var golesLocal by remember(item.prediccion) {
-        mutableStateOf(item.prediccion?.golesLocal?.toString() ?: "")
-    }
-    var golesVisitante by remember(item.prediccion) {
-        mutableStateOf(item.prediccion?.golesVisitante?.toString() ?: "")
-    }
-
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        colors = cardColors(bloqueado),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 5.dp),
+        colors = if (bloqueado) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                 else CardDefaults.cardColors(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            CabeceraPartido(item)
-            Spacer(Modifier.height(12.dp))
-            FilaPrediccion(
-                golesLocal = golesLocal,
-                golesVisitante = golesVisitante,
-                bloqueado = bloqueado,
-                onGolesLocalChange = { golesLocal = it },
-                onGolesVisitanteChange = { golesVisitante = it },
-            )
-            if (!bloqueado) {
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = {
-                        val gL = golesLocal.toIntOrNull() ?: return@Button
-                        val gV = golesVisitante.toIntOrNull() ?: return@Button
-                        onGuardar(item.partido, gL, gV)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (item.prediccion != null) "Actualizar" else "Guardar")
-                }
-            }
+        Column(Modifier.padding(12.dp)) {
+            CabeceraPartidoCard(item.partido)
+            Spacer(Modifier.height(10.dp))
+            FilaEquiposYMarcador(item.partido)
+            Spacer(Modifier.height(6.dp))
+            FechaYSede(item.partido)
+            HorizontalDivider(Modifier.padding(vertical = 10.dp))
+            SeccionPrediccion(item = item, onGuardar = onGuardar)
         }
     }
 }
 
 @Composable
-private fun CabeceraPartido(item: PartidoConPrediccion) {
+private fun CabeceraPartidoCard(partido: Partido) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(item.partido.equipoLocal.nombre, style = MaterialTheme.typography.bodyLarge)
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("vs", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(4.dp))
-            EstadoBadge(item.partido.estado)
-        }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(item.partido.equipoVisitante.nombre, style = MaterialTheme.typography.bodyLarge)
-        }
-    }
-}
-
-@Composable
-private fun FilaPrediccion(
-    golesLocal: String,
-    golesVisitante: String,
-    bloqueado: Boolean,
-    onGolesLocalChange: (String) -> Unit,
-    onGolesVisitanteChange: (String) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedTextField(
-            value = golesLocal,
-            onValueChange = { if (it.length <= 2) onGolesLocalChange(it) },
-            modifier = Modifier.width(72.dp),
-            singleLine = true,
-            enabled = !bloqueado,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            label = { Text("Local") },
-        )
-        Text(" - ", modifier = Modifier.padding(horizontal = 8.dp))
-        OutlinedTextField(
-            value = golesVisitante,
-            onValueChange = { if (it.length <= 2) onGolesVisitanteChange(it) },
-            modifier = Modifier.width(72.dp),
-            singleLine = true,
-            enabled = !bloqueado,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            label = { Text("Visita") },
-        )
-    }
-    if (bloqueado) {
-        Spacer(Modifier.height(4.dp))
+        EstadoBadge(partido.estado)
+        Spacer(Modifier.weight(1f))
         Text(
-            text = "Partido bloqueado para predicciones",
+            text = "J${partido.jornada}",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.outline,
         )
@@ -196,20 +236,242 @@ private fun FilaPrediccion(
 }
 
 @Composable
-private fun cardColors(bloqueado: Boolean) = if (bloqueado) {
-    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-} else {
-    CardDefaults.cardColors()
+private fun FilaEquiposYMarcador(partido: Partido) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        EquipoDisplay(equipo = partido.equipoLocal, modifier = Modifier.weight(1f))
+        MarcadorDisplay(golesLocal = partido.golesLocal, golesVisitante = partido.golesVisitante)
+        EquipoDisplay(equipo = partido.equipoVisitante, modifier = Modifier.weight(1f))
+    }
 }
 
-private fun partidoFake() = Partido(
-    id = "p1", jornada = 1, grupo = "A", fase = "Grupos",
+@Composable
+private fun EquipoDisplay(equipo: Equipo, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = equipo.iso.take(3).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = equipo.nombre,
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun MarcadorDisplay(golesLocal: Int?, golesVisitante: Int?) {
+    val texto = if (golesLocal != null && golesVisitante != null)
+        "$golesLocal - $golesVisitante"
+    else
+        "vs"
+    Text(
+        text = texto,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 12.dp),
+    )
+}
+
+@Composable
+private fun FechaYSede(partido: Partido) {
+    Text(
+        text = "${partido.fecha.toFechaCorta()}  ·  ${partido.sede}",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.outline,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun SeccionPrediccion(
+    item: PartidoConPrediccion,
+    onGuardar: (Partido, Int, Int) -> Unit,
+) {
+    when {
+        item.estadoPrediccion == EstadoPrediccion.ABIERTO ->
+            FormularioPrediccion(item = item, onGuardar = onGuardar)
+        item.partido.estado == EstadoPartido.FINALIZADO ->
+            ResultadoFinalizadoSection(partido = item.partido, prediccion = item.prediccion)
+        else ->
+            PrediccionBloqueadaSection(prediccion = item.prediccion)
+    }
+}
+
+@Composable
+private fun FormularioPrediccion(
+    item: PartidoConPrediccion,
+    onGuardar: (Partido, Int, Int) -> Unit,
+) {
+    var gL by remember(item.prediccion) {
+        mutableStateOf(item.prediccion?.golesLocal?.toString() ?: "")
+    }
+    var gV by remember(item.prediccion) {
+        mutableStateOf(item.prediccion?.golesVisitante?.toString() ?: "")
+    }
+    Column {
+        Text(
+            text = if (item.prediccion != null) "Tu predicción" else "Predice el marcador",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            OutlinedFieldGoles(valor = gL, label = "L", onCambio = { if (it.length <= 2) gL = it })
+            Text(text = "-", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            OutlinedFieldGoles(valor = gV, label = "V", onCambio = { if (it.length <= 2) gV = it })
+            Spacer(Modifier.weight(1f))
+            Button(
+                onClick = {
+                    val golesL = gL.toIntOrNull() ?: return@Button
+                    val golesV = gV.toIntOrNull() ?: return@Button
+                    onGuardar(item.partido, golesL, golesV)
+                },
+            ) {
+                Text(if (item.prediccion != null) "Actualizar" else "Guardar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun OutlinedFieldGoles(valor: String, label: String, onCambio: (String) -> Unit) {
+    OutlinedTextField(
+        value = valor,
+        onValueChange = onCambio,
+        modifier = Modifier.width(64.dp),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        label = { Text(label) },
+    )
+}
+
+@Composable
+private fun ResultadoFinalizadoSection(partido: Partido, prediccion: Prediccion?) {
+    if (prediccion == null) {
+        Text(
+            text = "Sin predicción registrada",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        return
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "Tu predicción: ${prediccion.golesLocal} - ${prediccion.golesVisitante}",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        val badge = calcularResultadoBadge(partido, prediccion)
+        if (badge != null) ResultadoBadge(badge)
+    }
+}
+
+@Composable
+private fun ResultadoBadge(badge: ResultadoBadgeInfo) {
+    Text(
+        text = badge.etiqueta,
+        color = Color.White,
+        fontSize = 11.sp,
+        modifier = Modifier
+            .background(color = badge.color, shape = RoundedCornerShape(4.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    )
+}
+
+@Composable
+private fun PrediccionBloqueadaSection(prediccion: Prediccion?) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = "Bloqueado",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        if (prediccion != null) {
+            Text(
+                text = "· Tu predicción: ${prediccion.golesLocal} - ${prediccion.golesVisitante}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+private data class ResultadoBadgeInfo(val etiqueta: String, val color: Color)
+
+private fun calcularResultadoBadge(partido: Partido, pred: Prediccion): ResultadoBadgeInfo? {
+    if (partido.estado != EstadoPartido.FINALIZADO) return null
+    val gL = partido.golesLocal ?: return null
+    val gV = partido.golesVisitante ?: return null
+    return when {
+        gL == pred.golesLocal && gV == pred.golesVisitante ->
+            ResultadoBadgeInfo("Exacto", Color(0xFF4CAF50))
+        mismoGanador(gL, gV, pred.golesLocal, pred.golesVisitante) ->
+            ResultadoBadgeInfo("Tendencia", Color(0xFFFFA726))
+        else ->
+            ResultadoBadgeInfo("Fallo", Color(0xFFEF5350))
+    }
+}
+
+private fun mismoGanador(gL: Int, gV: Int, pL: Int, pV: Int): Boolean =
+    (gL > gV && pL > pV) || (gL < gV && pL < pV) || (gL == gV && pL == pV)
+
+private val fechaFormatter = DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.forLanguageTag("es-MX"))
+
+private fun Instant.toFechaCorta(): String =
+    atZone(ZoneId.systemDefault()).format(fechaFormatter)
+
+// ── Datos para previews ──────────────────────────────────────────────────────
+
+private fun partidoFake(
+    id: String = "p1",
+    golesLocal: Int? = null,
+    golesVisitante: Int? = null,
+    estado: EstadoPartido = EstadoPartido.PROGRAMADO,
+) = Partido(
+    id = id, jornada = 1, grupo = "A", fase = "Grupos",
     equipoLocal = Equipo("México", "MX"),
-    equipoVisitante = Equipo("Estados Unidos", "US"),
+    equipoVisitante = Equipo("Argentina", "AR"),
     fecha = Instant.now(), sede = "Estadio Azteca",
-    golesLocal = null, golesVisitante = null,
-    estado = EstadoPartido.PROGRAMADO,
+    golesLocal = golesLocal, golesVisitante = golesVisitante,
+    estado = estado,
 )
+
+private fun prediccionFake() = Prediccion("u1", "p1", 2, 1, Instant.now(), Instant.now())
 
 @Preview(showBackground = true, name = "Partido — abierto sin predicción")
 @Composable
@@ -222,13 +484,38 @@ private fun PartidoCardAbiertoPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Partido — bloqueado con predicción")
+@Preview(showBackground = true, name = "Partido — abierto con predicción")
 @Composable
-private fun PartidoCardBloqueadoPreview() {
-    val pred = Prediccion("u1", "p1", 2, 1, Instant.now(), Instant.now())
+private fun PartidoCardConPrediccionPreview() {
     QuinielaTheme {
         PartidoCard(
-            item = PartidoConPrediccion(partidoFake(), pred, EstadoPrediccion.BLOQUEADO),
+            item = PartidoConPrediccion(partidoFake(), prediccionFake(), EstadoPrediccion.ABIERTO),
+            onGuardar = { _, _, _ -> },
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Partido — finalizado exacto")
+@Composable
+private fun PartidoCardFinalizadoPreview() {
+    QuinielaTheme {
+        PartidoCard(
+            item = PartidoConPrediccion(
+                partido = partidoFake(golesLocal = 2, golesVisitante = 1, estado = EstadoPartido.FINALIZADO),
+                prediccion = prediccionFake(),
+                estadoPrediccion = EstadoPrediccion.BLOQUEADO,
+            ),
+            onGuardar = { _, _, _ -> },
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Partido — bloqueado sin predicción")
+@Composable
+private fun PartidoCardBloqueadoPreview() {
+    QuinielaTheme {
+        PartidoCard(
+            item = PartidoConPrediccion(partidoFake(estado = EstadoPartido.EN_VIVO), null, EstadoPrediccion.BLOQUEADO),
             onGuardar = { _, _, _ -> },
         )
     }
