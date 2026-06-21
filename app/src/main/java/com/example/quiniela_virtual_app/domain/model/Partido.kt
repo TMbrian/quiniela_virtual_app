@@ -5,6 +5,7 @@ import java.time.Instant
 data class Equipo(
     val nombre: String,
     val iso: String,
+    val crestUrl: String? = null,
 )
 
 data class Partido(

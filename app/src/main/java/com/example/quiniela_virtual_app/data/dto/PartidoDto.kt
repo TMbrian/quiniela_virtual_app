@@ -9,6 +9,7 @@ import java.time.Instant
 data class EquipoDto(
     val nombre: String = "",
     val iso: String = "",
+    val crestUrl: String? = null,
 )
 
 data class PartidoDto(
@@ -34,8 +35,8 @@ fun PartidoDto.toDomain(): Partido = Partido(
     jornada = jornada,
     grupo = grupo,
     fase = fase,
-    equipoLocal = Equipo(equipoLocal.nombre, equipoLocal.iso),
-    equipoVisitante = Equipo(equipoVisitante.nombre, equipoVisitante.iso),
+    equipoLocal = Equipo(equipoLocal.nombre, equipoLocal.iso, equipoLocal.crestUrl),
+    equipoVisitante = Equipo(equipoVisitante.nombre, equipoVisitante.iso, equipoVisitante.crestUrl),
     fecha = Instant.ofEpochSecond(fecha.seconds, fecha.nanoseconds.toLong()),
     sede = sede,
     golesLocal = golesLocal?.toInt(),
@@ -51,8 +52,8 @@ fun Partido.toFirestoreMap(): Map<String, Any?> = mapOf(
     "jornada" to jornada,
     "grupo" to grupo,
     "fase" to fase,
-    "equipoLocal" to mapOf("nombre" to equipoLocal.nombre, "iso" to equipoLocal.iso),
-    "equipoVisitante" to mapOf("nombre" to equipoVisitante.nombre, "iso" to equipoVisitante.iso),
+    "equipoLocal" to mapOf("nombre" to equipoLocal.nombre, "iso" to equipoLocal.iso, "crestUrl" to equipoLocal.crestUrl),
+    "equipoVisitante" to mapOf("nombre" to equipoVisitante.nombre, "iso" to equipoVisitante.iso, "crestUrl" to equipoVisitante.crestUrl),
     "fecha" to Timestamp(fecha.epochSecond, fecha.nano),
     "sede" to sede,
     "golesLocal" to golesLocal,

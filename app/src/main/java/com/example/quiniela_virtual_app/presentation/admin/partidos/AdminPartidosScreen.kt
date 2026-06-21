@@ -16,6 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.SubcomposeAsyncImage
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Button
@@ -304,11 +307,21 @@ private fun CabeceraCard(partido: Partido) {
     ) {
         EstadoBadge(partido.estado)
         Spacer(Modifier.weight(1f))
-        Text(
-            text = if (partido.fase == "Grupos") "J${partido.jornada}" else partido.fase,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-        )
+        Box(
+            modifier = Modifier
+                .background(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(50),
+                )
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+        ) {
+            Text(
+                text = if (partido.fase == "Grupos") "J${partido.jornada}" else partido.fase,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
     }
 }
 
@@ -326,26 +339,35 @@ private fun FilaEquiposYMarcador(partido: Partido) {
 
 @Composable
 private fun EquipoDisplay(equipo: Equipo, modifier: Modifier = Modifier) {
+    val inicialesColors = MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = equipo.iso.take(3).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
+        SubcomposeAsyncImage(
+            model = equipo.crestUrl,
+            contentDescription = equipo.nombre,
+            modifier = Modifier.size(40.dp),
+            contentScale = ContentScale.Fit,
+            loading = {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            },
+            error = {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(color = inicialesColors.first, shape = CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = equipo.iso.take(3).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = inicialesColors.second,
+                    )
+                }
+            },
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             text = equipo.nombre,
@@ -467,24 +489,6 @@ private fun SeccionLockOverride(
         ahora < partido.lockOverrideExpiry!!.toEpochMilli()
 
     Column {
-        Text(
-            text = "Ventana de predicción",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.secondary,
-        )
-        Spacer(Modifier.height(6.dp))
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            DURACIONES_LOCK.forEachIndexed { index, (_, etiqueta) ->
-                SegmentedButton(
-                    selected = index == duracionIdx,
-                    onClick = { duracionIdx = index },
-                    shape = SegmentedButtonDefaults.itemShape(index, DURACIONES_LOCK.size),
-                    label = { Text(etiqueta) },
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -505,6 +509,24 @@ private fun SeccionLockOverride(
                     else onForzarBloqueo(partido)
                 },
             )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Duración de la ventana",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        Spacer(Modifier.height(4.dp))
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            DURACIONES_LOCK.forEachIndexed { index, (_, etiqueta) ->
+                SegmentedButton(
+                    selected = index == duracionIdx,
+                    onClick = { duracionIdx = index },
+                    shape = SegmentedButtonDefaults.itemShape(index, DURACIONES_LOCK.size),
+                    label = { Text(etiqueta) },
+                )
+            }
         }
     }
 }
@@ -546,33 +568,38 @@ private fun ActualizarMarcadorRow(
                      golesVisitante != (partido.golesVisitante?.toString() ?: "")
     val inputValido = golesLocal.toIntOrNull() != null && golesVisitante.toIntOrNull() != null
 
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        OutlinedTextField(
-            value = golesLocal,
-            onValueChange = onGolesLocalChange,
-            modifier = Modifier.width(64.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            label = { Text("L") },
-        )
-        Text(
-            text = "-",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
-        OutlinedTextField(
-            value = golesVisitante,
-            onValueChange = onGolesVisitanteChange,
-            modifier = Modifier.width(64.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            label = { Text("V") },
-        )
-        Spacer(Modifier.weight(1f))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = golesLocal,
+                onValueChange = onGolesLocalChange,
+                modifier = Modifier.width(72.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                label = { Text("Local") },
+            )
+            Text(
+                text = "-",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            OutlinedTextField(
+                value = golesVisitante,
+                onValueChange = onGolesVisitanteChange,
+                modifier = Modifier.width(72.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                label = { Text("Visita") },
+            )
+        }
+        Spacer(Modifier.height(8.dp))
         Button(
             onClick = {
                 val gL = golesLocal.toIntOrNull() ?: return@Button
@@ -580,8 +607,9 @@ private fun ActualizarMarcadorRow(
                 onActualizar(partido, gL, gV)
             },
             enabled = hayCambios && inputValido,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Actualizar")
+            Text("Actualizar marcador")
         }
     }
 }

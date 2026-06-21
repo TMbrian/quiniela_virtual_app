@@ -41,6 +41,7 @@ data class EquipoApiDto(
     @SerializedName("name")      val name: String?,
     @SerializedName("shortName") val shortName: String?,
     @SerializedName("tla")       val tla: String?,
+    @SerializedName("crest")     val crest: String?,
 )
 
 /**
@@ -86,8 +87,9 @@ fun PartidoApiDto.toDomain(): Partido = Partido(
  * Prioriza [shortName] sobre [name]; usa "Por definir" si ambos son null.
  */
 private fun EquipoApiDto.toDomain(): Equipo = Equipo(
-    nombre = shortName ?: name ?: "Por definir",
-    iso    = tla ?: "--",
+    nombre   = shortName ?: name ?: "Por definir",
+    iso      = tla ?: "--",
+    crestUrl = crest,
 )
 /**
  * Devuelve un [Equipo] placeholder para partidos donde el rival aún no está definido,
