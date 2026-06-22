@@ -153,30 +153,76 @@ private fun PartidosPorSecciones(
     }
 }
 
+private data class ResumenJornada(
+    val conPrediccion: Int,
+    val total: Int,
+    val puntosGanados: Int,
+    val hayFinalizados: Boolean,
+)
+
+private fun resumenDe(seccion: PartidoJornadaSeccion): ResumenJornada {
+    val items = seccion.grupos.flatMap { it.items }
+    return ResumenJornada(
+        conPrediccion = items.count { it.prediccion != null },
+        total = items.size,
+        puntosGanados = items.mapNotNull { it.puntosGanados }.sum(),
+        hayFinalizados = items.any { it.partido.estado == EstadoPartido.FINALIZADO && it.prediccion != null },
+    )
+}
+
 @Composable
 private fun JornadaHeader(seccion: PartidoJornadaSeccion) {
+    val resumen = resumenDe(seccion)
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = seccion.titulo,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            if (seccion.subtitulo.isNotBlank()) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = seccion.subtitulo,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                    text = seccion.titulo,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
+                if (seccion.subtitulo.isNotBlank()) {
+                    Text(
+                        text = seccion.subtitulo,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                    )
+                }
             }
+            ResumenJornadaRow(resumen)
+        }
+    }
+}
+
+@Composable
+private fun ResumenJornadaRow(resumen: ResumenJornada) {
+    val colorMuted = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+    val colorPts = if (resumen.puntosGanados > 0) MaterialTheme.colorScheme.primary else colorMuted
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "${resumen.conPrediccion}/${resumen.total} predicciones",
+            style = MaterialTheme.typography.labelSmall,
+            color = colorMuted,
+        )
+        if (resumen.hayFinalizados) {
+            Text("·", style = MaterialTheme.typography.labelSmall, color = colorMuted)
+            Text(
+                text = "+${resumen.puntosGanados} pts",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colorPts,
+            )
         }
     }
 }
