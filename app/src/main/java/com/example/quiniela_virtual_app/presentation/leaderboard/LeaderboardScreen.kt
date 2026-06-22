@@ -1,5 +1,6 @@
 package com.example.quiniela_virtual_app.presentation.leaderboard
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,8 +14,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,15 +42,16 @@ import com.example.quiniela_virtual_app.presentation.theme.QuinielaTheme
 @Composable
 fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val currentUid = viewModel.currentUid
     when (val estado = uiState) {
         is UiState.Loading -> LoadingIndicator()
         is UiState.Error   -> ErrorMessage(estado.mensaje)
-        is UiState.Success -> LeaderboardList(estado.data)
+        is UiState.Success -> LeaderboardList(posiciones = estado.data, currentUid = currentUid)
     }
 }
 
 @Composable
-private fun LeaderboardList(posiciones: List<PosicionLeaderboard>) {
+private fun LeaderboardList(posiciones: List<PosicionLeaderboard>, currentUid: String?) {
     if (posiciones.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Aún no hay posiciones registradas.")
@@ -59,18 +66,25 @@ private fun LeaderboardList(posiciones: List<PosicionLeaderboard>) {
         ),
     ) {
         itemsIndexed(posiciones, key = { _, p -> p.uid }) { index, posicion ->
-            PosicionCard(posicion = posicion, numero = index + 1)
+            PosicionCard(
+                posicion = posicion,
+                numero = index + 1,
+                esMia = posicion.uid == currentUid,
+            )
         }
     }
 }
 
 @Composable
-private fun PosicionCard(posicion: PosicionLeaderboard, numero: Int) {
+private fun PosicionCard(posicion: PosicionLeaderboard, numero: Int, esMia: Boolean = false) {
+    val context = LocalContext.current
+    val cardColors = if (numero == 1) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                     else CardDefaults.cardColors()
+    val puntosColor = if (numero == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = if (numero <= 3) 4.dp else 1.dp),
-        colors = if (numero == 1) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                 else CardDefaults.cardColors(),
+        colors = cardColors,
     ) {
         Row(
             modifier = Modifier
@@ -97,8 +111,7 @@ private fun PosicionCard(posicion: PosicionLeaderboard, numero: Int) {
                     text = "${posicion.puntosTotales}",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (numero == 1) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface,
+                    color = puntosColor,
                 )
                 Text(
                     text = "pts",
@@ -106,8 +119,26 @@ private fun PosicionCard(posicion: PosicionLeaderboard, numero: Int) {
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
+            if (esMia) {
+                IconButton(onClick = { compartirPosicion(context, numero, posicion) }) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Compartir posición",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         }
     }
+}
+
+private fun compartirPosicion(context: android.content.Context, numero: Int, posicion: PosicionLeaderboard) {
+    val texto = "Voy #$numero con ${posicion.puntosTotales} pts en la quiniela 🏆"
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, texto)
+    }
+    context.startActivity(Intent.createChooser(intent, null))
 }
 
 @Composable
@@ -152,7 +183,7 @@ private fun posicionesFake() = listOf(
 @Composable
 private fun LeaderboardPreview() {
     QuinielaTheme {
-        LeaderboardList(posicionesFake())
+        LeaderboardList(posiciones = posicionesFake(), currentUid = "u2")
     }
 }
 

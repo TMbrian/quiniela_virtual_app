@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.quiniela_virtual_app.domain.model.PosicionLeaderboard
 import com.example.quiniela_virtual_app.domain.repository.LeaderboardRepository
 import com.example.quiniela_virtual_app.presentation.shared.UiState
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +17,10 @@ import javax.inject.Inject
 @HiltViewModel
 class LeaderboardViewModel @Inject constructor(
     private val repository: LeaderboardRepository,
+    private val auth: FirebaseAuth,
 ) : ViewModel() {
+
+    val currentUid: String? get() = auth.currentUser?.uid
 
     private val _uiState = MutableStateFlow<UiState<List<PosicionLeaderboard>>>(UiState.Loading)
     val uiState: StateFlow<UiState<List<PosicionLeaderboard>>> = _uiState.asStateFlow()
