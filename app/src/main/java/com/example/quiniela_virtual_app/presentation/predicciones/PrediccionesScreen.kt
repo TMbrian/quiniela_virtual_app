@@ -159,7 +159,11 @@ private fun ContenidoPredicciones(
         }
         if (proximoPartido != null) {
             item(key = "proximo") {
-                ProximoPartidoCard(item = proximoPartido, onVerPartido = onVerPartido)
+                ProximoPartidoCard(
+                    item = proximoPartido,
+                    lockAnticipacionMs = lockAnticipacionMs,
+                    onVerPartido = onVerPartido,
+                )
             }
         }
         secciones.forEach { seccion ->
@@ -184,7 +188,21 @@ private fun ContenidoPredicciones(
 }
 
 @Composable
-private fun ProximoPartidoCard(item: PartidoConPrediccion, onVerPartido: () -> Unit) {
+private fun ProximoPartidoCard(
+    item: PartidoConPrediccion,
+    lockAnticipacionMs: Long,
+    onVerPartido: () -> Unit,
+) {
+    var ahora by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            ahora = System.currentTimeMillis()
+        }
+    }
+    val restanteMs = item.partido.fecha.toEpochMilli() - lockAnticipacionMs - ahora
+    val mostrarCierre = item.estadoPrediccion == EstadoPrediccion.ABIERTO && restanteMs in 1..<86_400_000L
+
     Card(
         onClick = onVerPartido,
         modifier = Modifier
@@ -205,10 +223,12 @@ private fun ProximoPartidoCard(item: PartidoConPrediccion, onVerPartido: () -> U
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
-                if (item.prediccion != null) {
-                    ConfirmacionChip(goles = "${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}")
-                } else {
-                    Text(
+                when {
+                    mostrarCierre           -> CuentaRegresiva(restanteMs)
+                    item.prediccion != null -> ConfirmacionChip(
+                        goles = "${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}",
+                    )
+                    else -> Text(
                         text = "Aún sin predecir",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,

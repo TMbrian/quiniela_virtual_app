@@ -96,7 +96,7 @@ class PartidosViewModel @Inject constructor(
         _uiState.map { estado ->
             if (estado !is UiState.Success) return@map null
             estado.data.partidos
-                .filter { it.partido.estado == EstadoPartido.PROGRAMADO && it.estadoPrediccion != EstadoPrediccion.ABIERTO }
+                .filter { it.partido.estado == EstadoPartido.PROGRAMADO }
                 .minByOrNull { it.partido.fecha }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
