@@ -3,6 +3,7 @@ package com.example.quiniela_virtual_app.presentation.navigation
 sealed class Screen(val route: String) {
     data object Login          : Screen("login")
     data object Predicciones   : Screen("predicciones")
+    data object Historial      : Screen("historial")
     data object Partidos       : Screen("partidos")
     data object Leaderboard    : Screen("leaderboard")
     data object Perfil         : Screen("perfil")
