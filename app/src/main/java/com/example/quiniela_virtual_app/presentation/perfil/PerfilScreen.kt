@@ -1,6 +1,8 @@
 package com.example.quiniela_virtual_app.presentation.perfil
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,11 +10,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,10 +26,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import coil.compose.SubcomposeAsyncImage
 import com.example.quiniela_virtual_app.domain.model.PosicionLeaderboard
 import com.example.quiniela_virtual_app.domain.model.Usuario
 import com.example.quiniela_virtual_app.presentation.shared.UiState
@@ -60,6 +68,8 @@ private fun PerfilContent(data: PerfilData, onCerrarSesion: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(32.dp))
+        AvatarUsuario(nombre = data.usuario.nombre, fotoUrl = data.usuario.fotoUrl)
+        Spacer(Modifier.height(16.dp))
         Text(data.usuario.nombre, style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(8.dp))
         Text(data.usuario.email, style = MaterialTheme.typography.bodyMedium)
@@ -70,6 +80,10 @@ private fun PerfilContent(data: PerfilData, onCerrarSesion: () -> Unit) {
         )
         Spacer(Modifier.height(24.dp))
         SeccionEstadisticas(data.puesto, data.stats)
+        if (data.rachaActual > 0) {
+            Spacer(Modifier.height(16.dp))
+            RachaCard(data.rachaActual)
+        }
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onCerrarSesion,
@@ -137,7 +151,74 @@ private fun StatItem(label: String, valor: String, detalle: String? = null) {
     }
 }
 
+@Composable
+private fun RachaCard(racha: Int) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Racha actual",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Aciertos consecutivos",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+            Text(
+                text = "$racha",
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
 private fun pct(valor: Int, total: Int): Int = if (total > 0) valor * 100 / total else 0
+
+@Composable
+private fun AvatarUsuario(nombre: String, fotoUrl: String?) {
+    val iniciales = nombre.split(" ")
+        .mapNotNull { it.firstOrNull()?.toString() }
+        .take(2)
+        .joinToString("")
+        .uppercase()
+    SubcomposeAsyncImage(
+        model = fotoUrl,
+        contentDescription = "Foto de perfil",
+        modifier = Modifier
+            .size(80.dp)
+            .clip(CircleShape),
+        contentScale = ContentScale.Crop,
+        loading = {
+            CircularProgressIndicator(modifier = Modifier.size(36.dp), strokeWidth = 3.dp)
+        },
+        error = {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = iniciales,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        },
+    )
+}
 
 // ── Datos para previews ──────────────────────────────────────────────────────
 
