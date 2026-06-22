@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
@@ -24,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -76,6 +78,8 @@ fun PrediccionesScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     val mensajeExito by viewModel.mensajeExito.collectAsState()
     val refreshing by viewModel.refreshing.collectAsState()
     val proximoPartido by viewModel.proximoPartido.collectAsState()
+    val filtroJornada by viewModel.filtroJornada.collectAsState()
+    val jornadasDisponibles by viewModel.jornadasDisponibles.collectAsState()
     val lockMs = (uiState as? UiState.Success)?.data?.lockAnticipacionMs ?: 60 * 60_000L
     val snackbarHost = remember { SnackbarHostState() }
 
@@ -86,24 +90,34 @@ fun PrediccionesScreen(viewModel: PartidosViewModel = hiltViewModel()) {
         mensajeExito?.let { snackbarHost.showSnackbar(it); viewModel.limpiarMensajeExito() }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        PullToRefreshBox(
-            isRefreshing = refreshing,
-            onRefresh = viewModel::reiniciar,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            when (val estado = secciones) {
-                is UiState.Loading -> LoadingIndicator()
-                is UiState.Error   -> ErrorMessage(estado.mensaje)
-                is UiState.Success -> ContenidoPredicciones(
-                    secciones = filtrarSoloAbiertas(estado.data),
-                    lockAnticipacionMs = lockMs,
-                    proximoPartido = proximoPartido,
-                    onGuardar = viewModel::guardarPrediccion,
-                )
-            }
+    Column(Modifier.fillMaxSize()) {
+        if (jornadasDisponibles.size > 1) {
+            JornadaFiltroChips(
+                filtroJornada = filtroJornada,
+                onJornadaChange = viewModel::filtrarJornada,
+                jornadasDisponibles = jornadasDisponibles,
+            )
+            HorizontalDivider()
         }
-        SnackbarHost(hostState = snackbarHost, modifier = Modifier.align(Alignment.BottomCenter))
+        Box(Modifier.weight(1f)) {
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = viewModel::reiniciar,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when (val estado = secciones) {
+                    is UiState.Loading -> LoadingIndicator()
+                    is UiState.Error   -> ErrorMessage(estado.mensaje)
+                    is UiState.Success -> ContenidoPredicciones(
+                        secciones = filtrarSoloAbiertas(estado.data),
+                        lockAnticipacionMs = lockMs,
+                        proximoPartido = proximoPartido,
+                        onGuardar = viewModel::guardarPrediccion,
+                    )
+                }
+            }
+            SnackbarHost(hostState = snackbarHost, modifier = Modifier.align(Alignment.BottomCenter))
+        }
     }
 }
 
@@ -532,6 +546,33 @@ private fun CampoPuntaje(valor: String, label: String, onCambio: (String) -> Uni
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         label = { Text(label) },
     )
+}
+
+@Composable
+private fun JornadaFiltroChips(
+    filtroJornada: Int?,
+    onJornadaChange: (Int?) -> Unit,
+    jornadasDisponibles: List<Int>,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(key = "todas") {
+            FilterChip(
+                selected = filtroJornada == null,
+                onClick = { onJornadaChange(null) },
+                label = { Text("Todas") },
+            )
+        }
+        items(jornadasDisponibles, key = { "j_$it" }) { jornada ->
+            FilterChip(
+                selected = filtroJornada == jornada,
+                onClick = { onJornadaChange(jornada) },
+                label = { Text("J$jornada") },
+            )
+        }
+    }
 }
 
 @Composable
