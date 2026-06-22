@@ -1,11 +1,13 @@
 package com.example.quiniela_virtual_app.data.source.firestore
 
 import com.example.quiniela_virtual_app.data.dto.PartidoDto
+import com.example.quiniela_virtual_app.data.dto.toApiSyncMap
 import com.example.quiniela_virtual_app.data.dto.toFirestoreMap
 import com.example.quiniela_virtual_app.domain.model.EstadoPartido
 import com.example.quiniela_virtual_app.domain.model.Partido
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -70,7 +72,7 @@ class PartidoFirestoreSource @Inject constructor(
         partidos.chunked(499).forEach { chunk ->
             val batch = firestore.batch()
             chunk.forEach { partido ->
-                batch.set(coleccion.document(partido.id), partido.toFirestoreMap())
+                batch.set(coleccion.document(partido.id), partido.toApiSyncMap(), SetOptions.merge())
             }
             batch.commit().await()
         }
