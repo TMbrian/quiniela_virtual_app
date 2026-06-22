@@ -67,6 +67,7 @@ import com.example.quiniela_virtual_app.domain.model.EstadoPrediccion
 import com.example.quiniela_virtual_app.domain.model.Partido
 import com.example.quiniela_virtual_app.domain.model.Prediccion
 import com.example.quiniela_virtual_app.presentation.shared.UiState
+import com.example.quiniela_virtual_app.presentation.shared.enEspañol
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.EstadoBadge
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
@@ -663,79 +664,6 @@ private val fechaFormatter = DateTimeFormatter.ofPattern("d MMM · HH:mm", Local
 private fun Instant.toFechaCorta(): String =
     atZone(ZoneId.systemDefault()).format(fechaFormatter)
 
-private val NOMBRES_ES: Map<String, String> = mapOf(
-    // Asia
-    "Korea Republic"    to "Corea del Sur",
-    "Korea DPR"         to "Corea del Norte",
-    "IR Iran"           to "Irán",
-    "Saudi Arabia"      to "Arabia Saudita",
-    "Japan"             to "Japón",
-    "China PR"          to "China",
-    "Uzbekistan"        to "Uzbekistán",
-    "Indonesia"         to "Indonesia",
-    "Jordan"            to "Jordania",
-    "Iraq"              to "Irak",
-    "Bahrain"           to "Baréin",
-    "Oman"              to "Omán",
-    // África
-    "South Africa"      to "Sudáfrica",
-    "Morocco"           to "Marruecos",
-    "Cameroon"          to "Camerún",
-    "Egypt"             to "Egipto",
-    "Côte d'Ivoire"     to "Costa de Marfil",
-    "DR Congo"          to "Congo RD",
-    "Algeria"           to "Argelia",
-    "Tunisia"           to "Túnez",
-    "Nigeria"           to "Nigeria",
-    "Senegal"           to "Senegal",
-    "Ghana"             to "Ghana",
-    "Mali"              to "Mali",
-    // Europa
-    "Germany"           to "Alemania",
-    "France"            to "Francia",
-    "Netherlands"       to "Países Bajos",
-    "Belgium"           to "Bélgica",
-    "Croatia"           to "Croacia",
-    "England"           to "Inglaterra",
-    "Serbia"            to "Serbia",
-    "Switzerland"       to "Suiza",
-    "Denmark"           to "Dinamarca",
-    "Austria"           to "Austria",
-    "Scotland"          to "Escocia",
-    "Romania"           to "Rumanía",
-    "Slovakia"          to "Eslovaquia",
-    "Hungary"           to "Hungría",
-    "Czechia"           to "República Checa",
-    "Poland"            to "Polonia",
-    "Slovenia"          to "Eslovenia",
-    "Türkiye"           to "Turquía",
-    "Ukraine"           to "Ucrania",
-    "Greece"            to "Grecia",
-    "Wales"             to "Gales",
-    "Sweden"            to "Suecia",
-    "Norway"            to "Noruega",
-    "Finland"           to "Finlandia",
-    // América del Sur
-    "Brazil"            to "Brasil",
-    "Peru"              to "Perú",
-    "Paraguay"          to "Paraguay",
-    "Venezuela"         to "Venezuela",
-    "Ecuador"           to "Ecuador",
-    "Bolivia"           to "Bolivia",
-    // América del Norte/Centro/Caribe
-    "United States"     to "Estados Unidos",
-    "Costa Rica"        to "Costa Rica",
-    "Panama"            to "Panamá",
-    "Honduras"          to "Honduras",
-    "Jamaica"           to "Jamaica",
-    "El Salvador"       to "El Salvador",
-    "Cuba"              to "Cuba",
-    "Trinidad and Tobago" to "Trinidad y Tobago",
-    // Oceanía
-    "New Zealand"       to "Nueva Zelanda",
-)
-
-private fun String.enEspañol(): String = NOMBRES_ES[this] ?: this
 
 // ── Datos para previews ──────────────────────────────────────────────────────
 

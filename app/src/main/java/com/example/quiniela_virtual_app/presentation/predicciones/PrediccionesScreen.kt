@@ -61,6 +61,7 @@ import com.example.quiniela_virtual_app.presentation.partidos.PartidoGrupoSeccio
 import com.example.quiniela_virtual_app.presentation.partidos.PartidoJornadaSeccion
 import com.example.quiniela_virtual_app.presentation.partidos.PartidosViewModel
 import com.example.quiniela_virtual_app.presentation.shared.UiState
+import com.example.quiniela_virtual_app.presentation.shared.enEspañol
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
 import kotlinx.coroutines.delay
@@ -361,7 +362,7 @@ private fun FilaEquipos(partido: Partido) {
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         EquipoColumnPrediccion(
-            nombre = partido.equipoLocal.nombre,
+            nombre = partido.equipoLocal.nombre.enEspañol(),
             crestUrl = partido.equipoLocal.crestUrl,
             iso = partido.equipoLocal.iso,
             modifier = Modifier.weight(1f),
@@ -374,7 +375,7 @@ private fun FilaEquipos(partido: Partido) {
             modifier = Modifier.padding(horizontal = 8.dp),
         )
         EquipoColumnPrediccion(
-            nombre = partido.equipoVisitante.nombre,
+            nombre = partido.equipoVisitante.nombre.enEspañol(),
             crestUrl = partido.equipoVisitante.crestUrl,
             iso = partido.equipoVisitante.iso,
             modifier = Modifier.weight(1f),

@@ -47,6 +47,7 @@ import com.example.quiniela_virtual_app.presentation.partidos.PartidoGrupoSeccio
 import com.example.quiniela_virtual_app.presentation.partidos.PartidoJornadaSeccion
 import com.example.quiniela_virtual_app.presentation.partidos.PartidosViewModel
 import com.example.quiniela_virtual_app.presentation.shared.UiState
+import com.example.quiniela_virtual_app.presentation.shared.enEspañol
 import com.example.quiniela_virtual_app.presentation.shared.components.ErrorMessage
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
 import java.time.Instant
@@ -301,14 +302,14 @@ private fun FilaEquiposHistorial(partido: Partido) {
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         EquipoColumnHistorial(
-            nombre   = partido.equipoLocal.nombre,
+            nombre   = partido.equipoLocal.nombre.enEspañol(),
             crestUrl = partido.equipoLocal.crestUrl,
             iso      = partido.equipoLocal.iso,
             modifier = Modifier.weight(1f),
         )
         MarcadorFinal(partido.golesLocal, partido.golesVisitante)
         EquipoColumnHistorial(
-            nombre   = partido.equipoVisitante.nombre,
+            nombre   = partido.equipoVisitante.nombre.enEspañol(),
             crestUrl = partido.equipoVisitante.crestUrl,
             iso      = partido.equipoVisitante.iso,
             modifier = Modifier.weight(1f),
