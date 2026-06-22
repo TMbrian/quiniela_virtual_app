@@ -9,6 +9,7 @@ import com.example.quiniela_virtual_app.domain.usecase.partido.CambiarEstadoUseC
 import com.example.quiniela_virtual_app.domain.usecase.partido.ObtenerPartidosUseCase
 import com.example.quiniela_virtual_app.domain.usecase.partido.RestablecerPartidosUseCase
 import com.example.quiniela_virtual_app.domain.usecase.partido.SetExcluidoUseCase
+import com.example.quiniela_virtual_app.domain.repository.LeaderboardRepository
 import com.example.quiniela_virtual_app.domain.usecase.partido.SetLockOverrideUseCase
 import com.example.quiniela_virtual_app.domain.usecase.partido.SincronizarPartidosUseCase
 import com.example.quiniela_virtual_app.presentation.shared.UiState
@@ -35,6 +36,7 @@ class AdminPartidosViewModel @Inject constructor(
     private val cambiarEstadoUC: CambiarEstadoUseCase,
     private val setExcluidoUC: SetExcluidoUseCase,
     private val setLockOverrideUC: SetLockOverrideUseCase,
+    private val leaderboardRepository: LeaderboardRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState<List<Partido>>>(UiState.Loading)
@@ -79,17 +81,23 @@ class AdminPartidosViewModel @Inject constructor(
 
     fun actualizarResultado(partido: Partido, golesLocal: Int, golesVisitante: Int) =
         ejecutarAccion {
-            actualizarResultadoUC(partido.id, golesLocal, golesVisitante).fold(
-                onSuccess = { _accionEstado.value = "Resultado actualizado" },
-                onFailure = { e -> _accionEstado.value = e.message ?: "Error al actualizar" },
-            )
+            val result = actualizarResultadoUC(partido.id, golesLocal, golesVisitante)
+            if (result.isSuccess) {
+                _accionEstado.value = "Resultado actualizado"
+                recalcularLeaderboard()
+            } else {
+                _accionEstado.value = result.exceptionOrNull()?.message ?: "Error al actualizar"
+            }
         }
 
     fun cambiarEstado(partido: Partido, nuevoEstado: EstadoPartido) = ejecutarAccion {
-        cambiarEstadoUC(partido.id, nuevoEstado).fold(
-            onSuccess = { _accionEstado.value = "Estado cambiado a ${etiquetaEstado(nuevoEstado)}" },
-            onFailure = { e -> _accionEstado.value = e.message ?: "Error al cambiar estado" },
-        )
+        val result = cambiarEstadoUC(partido.id, nuevoEstado)
+        if (result.isSuccess) {
+            _accionEstado.value = "Estado cambiado a ${etiquetaEstado(nuevoEstado)}"
+            if (nuevoEstado == EstadoPartido.FINALIZADO) recalcularLeaderboard()
+        } else {
+            _accionEstado.value = result.exceptionOrNull()?.message ?: "Error al cambiar estado"
+        }
     }
 
     fun abrirPredicciones(partido: Partido, duracionMs: Long) = ejecutarAccion {
@@ -112,6 +120,12 @@ class AdminPartidosViewModel @Inject constructor(
             onSuccess = { _accionEstado.value = if (partido.excluido) "Partido incluido" else "Partido excluido" },
             onFailure = { e -> _accionEstado.value = e.message ?: "Error al actualizar" },
         )
+    }
+
+    private suspend fun recalcularLeaderboard() {
+        leaderboardRepository.recalcular().onFailure { e ->
+            _accionEstado.value = "Posiciones no actualizadas: ${e.message}"
+        }
     }
 
     private fun etiquetaEstado(estado: EstadoPartido): String = when (estado) {
