@@ -14,10 +14,10 @@ class CalcularEstadoPrediccionUseCase @Inject constructor() {
         ahoraMs: Long,
         lockMs: Long,
     ): EstadoPrediccion {
-        if (partido.estado == EstadoPartido.EN_VIVO) return BLOQUEADO
         if (partido.estado == EstadoPartido.FINALIZADO) return evalFinalizado(partido, ahoraMs)
-        if (partido.lockOverride == true) return BLOQUEADO
         if (partido.lockOverride == false) return evalUnlockTemporal(partido, ahoraMs)
+        if (partido.estado == EstadoPartido.EN_VIVO) return BLOQUEADO
+        if (partido.lockOverride == true) return BLOQUEADO
         return evalPorTiempo(partido, ahoraMs, lockMs)
     }
 
