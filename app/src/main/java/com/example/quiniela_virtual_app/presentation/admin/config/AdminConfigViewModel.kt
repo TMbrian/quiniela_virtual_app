@@ -39,6 +39,10 @@ class AdminConfigViewModel @Inject constructor(
         lockAnticipacionMin: Int,
         activa: Boolean,
     ) {
+        if (codigoApi.isBlank()) {
+            _guardadoEstado.value = "El código API no puede estar vacío (ej. WC, PL, CL)"
+            return
+        }
         val actual = (_uiState.value as? UiState.Success)?.data ?: return
         viewModelScope.launch {
             val config = buildConfig(actual, nombreCompeticion, descripcion, temporada, codigoApi,

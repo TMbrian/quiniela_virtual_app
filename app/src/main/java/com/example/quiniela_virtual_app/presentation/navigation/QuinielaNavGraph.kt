@@ -1,11 +1,14 @@
 package com.example.quiniela_virtual_app.presentation.navigation
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.style.TextAlign
+import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -49,13 +52,23 @@ fun QuinielaNavGraph() {
     val loginViewModel: LoginViewModel = hiltViewModel()
     val estaAutenticado by loginViewModel.estaAutenticado.collectAsState()
     val usuarioActual by loginViewModel.usuarioActual.collectAsState()
-    val esAdmin = usuarioActual?.esAdmin == true && BuildConfig.IS_ADMIN_BUILD
+    val esAdminFirestore = usuarioActual?.esAdmin == true
+    val esAdmin = esAdminFirestore && BuildConfig.IS_ADMIN_BUILD
     val estaActivo = usuarioActual?.activo != false
 
     when {
-        !estaAutenticado -> LoginScreen(viewModel = loginViewModel)
-        !estaActivo      -> CuentaDeshabilitadaScreen { loginViewModel.cerrarSesion() }
-        else             -> AppPrincipal(loginViewModel, esAdmin)
+        !estaAutenticado ->
+            LoginScreen(viewModel = loginViewModel)
+        usuarioActual == null ->
+            LoadingIndicator()
+        !estaActivo ->
+            CuentaDeshabilitadaScreen { loginViewModel.cerrarSesion() }
+        BuildConfig.IS_ADMIN_BUILD && !esAdminFirestore ->
+            AccesoRestringidoScreen("Esta versión es exclusiva para administradores.") { loginViewModel.cerrarSesion() }
+        !BuildConfig.IS_ADMIN_BUILD && esAdminFirestore ->
+            AccesoRestringidoScreen("Esta versión es para participantes.\nUsa la app de administración.") { loginViewModel.cerrarSesion() }
+        else ->
+            AppPrincipal(loginViewModel, esAdmin)
     }
 }
 
@@ -125,6 +138,30 @@ private data class NavItem(
     val etiqueta: String,
     val icono: ImageVector,
 )
+
+@Composable
+private fun AccesoRestringidoScreen(mensaje: String, onCerrarSesion: () -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = mensaje,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp),
+            )
+            Button(
+                onClick = onCerrarSesion,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+            ) { Text("Cerrar sesión") }
+        }
+    }
+}
 
 @Composable
 private fun CuentaDeshabilitadaScreen(onCerrarSesion: () -> Unit) {
