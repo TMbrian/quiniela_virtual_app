@@ -22,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +31,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.SubcomposeAsyncImage
 import androidx.compose.runtime.Composable
@@ -40,6 +42,13 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,13 +76,17 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     val secciones by viewModel.secciones.collectAsState()
     val uiStateValue by viewModel.uiState.collectAsState()
     val filtro by viewModel.filtroEstado.collectAsState()
+    val filtroJornada by viewModel.filtroJornada.collectAsState()
+    val jornadasDisponibles by viewModel.jornadasDisponibles.collectAsState()
     val guardarError by viewModel.guardarError.collectAsState()
     val mensajeExito by viewModel.mensajeExito.collectAsState()
+    val refreshing by viewModel.refreshing.collectAsState()
     val lockMs = (uiStateValue as? UiState.Success)?.data?.lockAnticipacionMs ?: 60 * 60_000L
     val snackbarHost = remember { SnackbarHostState() }
 
@@ -85,17 +98,29 @@ fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
-            FiltrosChips(filtroActual = filtro, onFiltroChange = viewModel::filtrarPor)
-            HorizontalDivider()
-            when (val estado = secciones) {
-                is UiState.Loading -> LoadingIndicator()
-                is UiState.Error   -> ErrorMessage(estado.mensaje)
-                is UiState.Success -> PartidosPorSecciones(
-                    secciones = estado.data,
-                    lockAnticipacionMs = lockMs,
-                    onGuardar = viewModel::guardarPrediccion,
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = viewModel::reiniciar,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Column(Modifier.fillMaxSize()) {
+                FiltrosChips(
+                    filtroEstado = filtro,
+                    onEstadoChange = viewModel::filtrarPor,
+                    filtroJornada = filtroJornada,
+                    onJornadaChange = viewModel::filtrarJornada,
+                    jornadasDisponibles = jornadasDisponibles,
                 )
+                HorizontalDivider()
+                when (val estado = secciones) {
+                    is UiState.Loading -> LoadingIndicator()
+                    is UiState.Error   -> ErrorMessage(estado.mensaje)
+                    is UiState.Success -> PartidosPorSecciones(
+                        secciones = estado.data,
+                        lockAnticipacionMs = lockMs,
+                        onGuardar = viewModel::guardarPrediccion,
+                    )
+                }
             }
         }
         SnackbarHost(hostState = snackbarHost, modifier = Modifier.align(Alignment.BottomCenter))
@@ -111,19 +136,45 @@ private val FILTROS: List<Pair<EstadoPartido?, String>> = listOf(
 
 @Composable
 private fun FiltrosChips(
-    filtroActual: EstadoPartido?,
-    onFiltroChange: (EstadoPartido?) -> Unit,
+    filtroEstado: EstadoPartido?,
+    onEstadoChange: (EstadoPartido?) -> Unit,
+    filtroJornada: Int?,
+    onJornadaChange: (Int?) -> Unit,
+    jornadasDisponibles: List<Int>,
 ) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(FILTROS, key = { it.second }) { (estado, etiqueta) ->
-            FilterChip(
-                selected = filtroActual == estado,
-                onClick = { onFiltroChange(estado) },
-                label = { Text(etiqueta) },
-            )
+    Column {
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(FILTROS, key = { it.second }) { (estado, etiqueta) ->
+                FilterChip(
+                    selected = filtroEstado == estado,
+                    onClick = { onEstadoChange(estado) },
+                    label = { Text(etiqueta) },
+                )
+            }
+        }
+        if (jornadasDisponibles.size > 1) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item(key = "jornada_todas") {
+                    FilterChip(
+                        selected = filtroJornada == null,
+                        onClick = { onJornadaChange(null) },
+                        label = { Text("Todas") },
+                    )
+                }
+                items(jornadasDisponibles, key = { "jornada_$it" }) { jornada ->
+                    FilterChip(
+                        selected = filtroJornada == jornada,
+                        onClick = { onJornadaChange(jornada) },
+                        label = { Text("J$jornada") },
+                    )
+                }
+            }
         }
     }
 }
@@ -295,7 +346,11 @@ private fun FilaEquiposYMarcador(partido: Partido) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         EquipoDisplay(equipo = partido.equipoLocal, modifier = Modifier.weight(1f))
-        MarcadorDisplay(golesLocal = partido.golesLocal, golesVisitante = partido.golesVisitante)
+        MarcadorDisplay(
+            golesLocal = partido.golesLocal,
+            golesVisitante = partido.golesVisitante,
+            estado = partido.estado,
+        )
         EquipoDisplay(equipo = partido.equipoVisitante, modifier = Modifier.weight(1f))
     }
 }
@@ -343,18 +398,53 @@ private fun EquipoDisplay(equipo: Equipo, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MarcadorDisplay(golesLocal: Int?, golesVisitante: Int?) {
-    val texto = if (golesLocal != null && golesVisitante != null)
-        "$golesLocal - $golesVisitante"
-    else
-        "vs"
-    Text(
-        text = texto,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+private fun MarcadorDisplay(golesLocal: Int?, golesVisitante: Int?, estado: EstadoPartido) {
+    val esEnVivo = estado == EstadoPartido.EN_VIVO
+    val texto = if (golesLocal != null && golesVisitante != null) "$golesLocal - $golesVisitante" else "vs"
+    val color = if (esEnVivo) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(horizontal = 12.dp),
+    ) {
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
+        if (esEnVivo) PuntoEnVivo()
+    }
+}
+
+@Composable
+private fun PuntoEnVivo() {
+    val transition = rememberInfiniteTransition(label = "envivo")
+    val alpha by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "alpha",
     )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .alpha(alpha)
+                .background(MaterialTheme.colorScheme.error, CircleShape),
+        )
+        Text(
+            text = "EN VIVO",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
 }
 
 @Composable

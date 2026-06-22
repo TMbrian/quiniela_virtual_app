@@ -64,3 +64,19 @@ fun Partido.toFirestoreMap(): Map<String, Any?> = mapOf(
     "lockOverrideExpiry" to lockOverrideExpiry?.let { Timestamp(it.epochSecond, it.nano) },
     "apiId" to apiId,
 )
+
+/** Solo los campos que provienen de la API. No incluye campos gestionados por el admin
+ * (excluido, lockOverride, lockOverrideExpiry) para que el sync nunca los sobrescriba. */
+fun Partido.toApiSyncMap(): Map<String, Any?> = mapOf(
+    "jornada"         to jornada,
+    "grupo"           to grupo,
+    "fase"            to fase,
+    "equipoLocal"     to mapOf("nombre" to equipoLocal.nombre, "iso" to equipoLocal.iso, "crestUrl" to equipoLocal.crestUrl),
+    "equipoVisitante" to mapOf("nombre" to equipoVisitante.nombre, "iso" to equipoVisitante.iso, "crestUrl" to equipoVisitante.crestUrl),
+    "fecha"           to Timestamp(fecha.epochSecond, fecha.nano),
+    "sede"            to sede,
+    "golesLocal"      to golesLocal,
+    "golesVisitante"  to golesVisitante,
+    "estado"          to estado.name,
+    "apiId"           to apiId,
+)

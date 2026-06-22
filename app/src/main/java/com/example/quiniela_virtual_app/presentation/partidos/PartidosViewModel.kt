@@ -15,12 +15,14 @@ import com.example.quiniela_virtual_app.domain.usecase.partido.ObtenerPartidosUs
 import com.example.quiniela_virtual_app.presentation.shared.UiState
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -63,21 +65,54 @@ class PartidosViewModel @Inject constructor(
     private val _filtroEstado = MutableStateFlow<EstadoPartido?>(null)
     val filtroEstado: StateFlow<EstadoPartido?> = _filtroEstado.asStateFlow()
 
+    private val _filtroJornada = MutableStateFlow<Int?>(null)
+    val filtroJornada: StateFlow<Int?> = _filtroJornada.asStateFlow()
+
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
+    private var cargarJob: Job? = null
+
     val secciones: StateFlow<UiState<List<PartidoJornadaSeccion>>> =
-        combine(_uiState, _filtroEstado) { estado, filtro ->
+        combine(_uiState, _filtroEstado, _filtroJornada) { estado, filtro, jornada ->
             when (estado) {
                 is UiState.Loading -> UiState.Loading
                 is UiState.Error   -> UiState.Error(estado.mensaje)
-                is UiState.Success -> UiState.Success(agruparEnSecciones(estado.data.partidos, filtro))
+                is UiState.Success -> UiState.Success(agruparEnSecciones(estado.data.partidos, filtro, jornada))
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState.Loading)
 
+    val jornadasDisponibles: StateFlow<List<Int>> =
+        _uiState.map { estado ->
+            if (estado !is UiState.Success) return@map emptyList()
+            estado.data.partidos
+                .filter { it.partido.fase == FASE_GRUPOS }
+                .map { it.partido.jornada }
+                .distinct()
+                .sorted()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val proximoPartido: StateFlow<PartidoConPrediccion?> =
+        _uiState.map { estado ->
+            if (estado !is UiState.Success) return@map null
+            estado.data.partidos
+                .filter { it.partido.estado == EstadoPartido.PROGRAMADO && it.estadoPrediccion != EstadoPrediccion.ABIERTO }
+                .minByOrNull { it.partido.fecha }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     init { cargar() }
+
+    fun reiniciar() {
+        _refreshing.value = true
+        cargarJob?.cancel()
+        cargar()
+    }
 
     fun limpiarError() { _guardarError.value = null }
     fun limpiarMensajeExito() { _mensajeExito.value = null }
 
     fun filtrarPor(estado: EstadoPartido?) { _filtroEstado.value = estado }
+    fun filtrarJornada(jornada: Int?) { _filtroJornada.value = jornada }
 
     fun guardarPrediccion(partido: Partido, golesLocal: Int, golesVisitante: Int) {
         val uid = auth.currentUser?.uid ?: return
@@ -109,14 +144,17 @@ class PartidosViewModel @Inject constructor(
 
     private fun cargar() {
         val uid = auth.currentUser?.uid ?: return
-        viewModelScope.launch {
+        cargarJob = viewModelScope.launch {
             combine(
                 obtenerPartidos(),
                 obtenerPredicciones(uid),
                 configRepository.observarConfig(),
             ) { partidos, predicciones, config -> combinarDatos(partidos, predicciones, config) }
                 .catch { e -> _uiState.value = UiState.Error(e.message ?: "Error al cargar") }
-                .collect { data -> _uiState.value = UiState.Success(data) }
+                .collect { data ->
+                    _uiState.value = UiState.Success(data)
+                    _refreshing.value = false
+                }
         }
     }
 
@@ -154,10 +192,16 @@ class PartidosViewModel @Inject constructor(
     private fun mismoGanador(gL: Int, gV: Int, pL: Int, pV: Int): Boolean =
         (gL > gV && pL > pV) || (gL < gV && pL < pV) || (gL == gV && pL == pV)
 
-    private fun agruparEnSecciones(items: List<PartidoConPrediccion>, filtro: EstadoPartido?): List<PartidoJornadaSeccion> {
+    private fun agruparEnSecciones(
+        items: List<PartidoConPrediccion>,
+        filtro: EstadoPartido?,
+        filtroJornada: Int?,
+    ): List<PartidoJornadaSeccion> {
         val filtrados = filtrarItems(items, filtro)
         val (deGrupos, deEliminacion) = filtrados.partition { it.partido.fase == FASE_GRUPOS }
-        return seccionesGrupos(deGrupos) + seccionesEliminacion(deEliminacion)
+        val gruposFiltrados = if (filtroJornada != null) deGrupos.filter { it.partido.jornada == filtroJornada } else deGrupos
+        val eliminacionFinal = if (filtroJornada != null) emptyList() else deEliminacion
+        return seccionesGrupos(gruposFiltrados) + seccionesEliminacion(eliminacionFinal)
     }
 
     private fun filtrarItems(items: List<PartidoConPrediccion>, filtro: EstadoPartido?): List<PartidoConPrediccion> {
