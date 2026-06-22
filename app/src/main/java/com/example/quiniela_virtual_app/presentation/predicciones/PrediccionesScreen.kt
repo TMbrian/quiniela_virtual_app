@@ -1,5 +1,6 @@
 package com.example.quiniela_virtual_app.presentation.predicciones
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,11 +17,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -28,6 +33,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,12 +67,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrediccionesScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     val secciones by viewModel.secciones.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val guardarError by viewModel.guardarError.collectAsState()
     val mensajeExito by viewModel.mensajeExito.collectAsState()
+    val refreshing by viewModel.refreshing.collectAsState()
+    val proximoPartido by viewModel.proximoPartido.collectAsState()
     val lockMs = (uiState as? UiState.Success)?.data?.lockAnticipacionMs ?: 60 * 60_000L
     val snackbarHost = remember { SnackbarHostState() }
 
@@ -78,14 +87,21 @@ fun PrediccionesScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        when (val estado = secciones) {
-            is UiState.Loading -> LoadingIndicator()
-            is UiState.Error   -> ErrorMessage(estado.mensaje)
-            is UiState.Success -> ContenidoPredicciones(
-                secciones = filtrarSoloAbiertas(estado.data),
-                lockAnticipacionMs = lockMs,
-                onGuardar = viewModel::guardarPrediccion,
-            )
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = viewModel::reiniciar,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when (val estado = secciones) {
+                is UiState.Loading -> LoadingIndicator()
+                is UiState.Error   -> ErrorMessage(estado.mensaje)
+                is UiState.Success -> ContenidoPredicciones(
+                    secciones = filtrarSoloAbiertas(estado.data),
+                    lockAnticipacionMs = lockMs,
+                    proximoPartido = proximoPartido,
+                    onGuardar = viewModel::guardarPrediccion,
+                )
+            }
         }
         SnackbarHost(hostState = snackbarHost, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -105,9 +121,10 @@ private fun filtrarSoloAbiertas(secciones: List<PartidoJornadaSeccion>): List<Pa
 private fun ContenidoPredicciones(
     secciones: List<PartidoJornadaSeccion>,
     lockAnticipacionMs: Long,
+    proximoPartido: PartidoConPrediccion?,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
-    if (secciones.isEmpty()) {
+    if (secciones.isEmpty() && proximoPartido == null) {
         EstadoVacio()
         return
     }
@@ -119,6 +136,11 @@ private fun ContenidoPredicciones(
     LazyColumn(Modifier.fillMaxSize()) {
         item(key = "resumen") {
             ResumenCard(predichas = predichas, total = totalAbiertas)
+        }
+        if (proximoPartido != null) {
+            item(key = "proximo") {
+                ProximoPartidoCard(item = proximoPartido)
+            }
         }
         secciones.forEach { seccion ->
             val itemsSeccion = seccion.grupos.flatMap { it.items }
@@ -137,6 +159,51 @@ private fun ContenidoPredicciones(
                     onGuardar = onGuardar,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ProximoPartidoCard(item: PartidoConPrediccion) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Próximo partido",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                if (item.prediccion != null) {
+                    ConfirmacionChip(goles = "${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}")
+                } else {
+                    Text(
+                        text = "Aún sin predecir",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            FilaEquipos(item.partido)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = item.partido.fecha.toFechaCorta(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -233,11 +300,15 @@ private fun TarjetaPrediccion(
     lockAnticipacionMs: Long,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
+    val borde = if (item.prediccion != null)
+        BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+    else null
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 5.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = borde,
     ) {
         Column(Modifier.padding(12.dp)) {
             FilaEquipos(item.partido)
@@ -400,13 +471,36 @@ private fun FormularioPrediccion(
             }
         }
         if (item.prediccion != null) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Actual: ${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-            )
+            Spacer(Modifier.height(6.dp))
+            ConfirmacionChip(goles = "${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}")
         }
+    }
+}
+
+@Composable
+private fun ConfirmacionChip(goles: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = MaterialTheme.shapes.small,
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.Check,
+            contentDescription = null,
+            modifier = Modifier.size(13.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+        Text(
+            text = "Guardada: $goles",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
     }
 }
 
