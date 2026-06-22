@@ -1,5 +1,7 @@
 package com.example.quiniela_virtual_app.presentation.predicciones
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -47,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -470,6 +475,7 @@ private fun FormularioPrediccion(
     lockAnticipacionMs: Long,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
+    val context = LocalContext.current
     var ahora by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -522,7 +528,30 @@ private fun FormularioPrediccion(
         }
         if (item.prediccion != null) {
             Spacer(Modifier.height(6.dp))
-            ConfirmacionChip(goles = "${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                ConfirmacionChip(goles = "${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}")
+                IconButton(
+                    onClick = {
+                        compartirPrediccion(
+                            context,
+                            item.partido,
+                            item.prediccion.golesLocal,
+                            item.prediccion.golesVisitante,
+                        )
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Compartir predicción",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
         }
     }
 }
@@ -633,6 +662,23 @@ private fun EstadoVacio() {
             )
         }
     }
+}
+
+private fun compartirPrediccion(
+    context: Context,
+    partido: Partido,
+    golesLocal: Int,
+    golesVisitante: Int,
+) {
+    val local = partido.equipoLocal.nombre.enEspañol()
+    val visitante = partido.equipoVisitante.nombre.enEspañol()
+    val fecha = partido.fecha.toFechaCorta()
+    val texto = "Mi predicción: $local $golesLocal - $golesVisitante $visitante\n$fecha\n— Quiniela Virtual"
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, texto)
+    }
+    context.startActivity(Intent.createChooser(intent, null))
 }
 
 private val fechaFormatter = DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.forLanguageTag("es-MX"))
