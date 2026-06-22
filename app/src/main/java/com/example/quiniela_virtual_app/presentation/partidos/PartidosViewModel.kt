@@ -30,6 +30,7 @@ data class PartidoConPrediccion(
     val partido: Partido,
     val prediccion: Prediccion?,
     val estadoPrediccion: EstadoPrediccion,
+    val puntosGanados: Int?,
 )
 
 data class PartidosData(
@@ -117,12 +118,32 @@ class PartidosViewModel @Inject constructor(
     ): PartidosData {
         val predMap = predicciones.associateBy { it.partidoId }
         val lockMs = (config?.lockAnticipacionMin ?: 60).toLong() * 60_000L
+        val puntosExacto = config?.puntosExacto ?: 5
+        val puntosTendencia = config?.puntosTendencia ?: 3
         val ahora = System.currentTimeMillis()
         val items = partidos
             .filter { !it.excluido }
-            .map { p -> PartidoConPrediccion(p, predMap[p.id], calcularEstado(p, ahora, lockMs)) }
+            .map { p ->
+                val pred = predMap[p.id]
+                PartidoConPrediccion(p, pred, calcularEstado(p, ahora, lockMs), calcularPuntos(p, pred, puntosExacto, puntosTendencia))
+            }
         return PartidosData(items, lockMs)
     }
+
+    private fun calcularPuntos(partido: Partido, prediccion: Prediccion?, puntosExacto: Int, puntosTendencia: Int): Int? {
+        if (partido.estado != EstadoPartido.FINALIZADO) return null
+        if (prediccion == null) return null
+        val gL = partido.golesLocal ?: return null
+        val gV = partido.golesVisitante ?: return null
+        return when {
+            gL == prediccion.golesLocal && gV == prediccion.golesVisitante -> puntosExacto
+            mismoGanador(gL, gV, prediccion.golesLocal, prediccion.golesVisitante) -> puntosTendencia
+            else -> 0
+        }
+    }
+
+    private fun mismoGanador(gL: Int, gV: Int, pL: Int, pV: Int): Boolean =
+        (gL > gV && pL > pV) || (gL < gV && pL < pV) || (gL == gV && pL == pV)
 
     private fun agruparEnSecciones(items: List<PartidoConPrediccion>, filtro: EstadoPartido?): List<PartidoJornadaSeccion> {
         val filtrados = filtrarItems(items, filtro)

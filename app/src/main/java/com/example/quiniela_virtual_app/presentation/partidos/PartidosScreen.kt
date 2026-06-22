@@ -337,7 +337,7 @@ private fun SeccionPrediccion(
         item.estadoPrediccion == EstadoPrediccion.ABIERTO ->
             FormularioPrediccion(item = item, lockAnticipacionMs = lockAnticipacionMs, onGuardar = onGuardar)
         item.partido.estado == EstadoPartido.FINALIZADO ->
-            ResultadoFinalizadoSection(partido = item.partido, prediccion = item.prediccion)
+            ResultadoFinalizadoSection(item)
         else ->
             PrediccionBloqueadaSection(prediccion = item.prediccion)
     }
@@ -432,8 +432,8 @@ private fun OutlinedFieldGoles(valor: String, label: String, onCambio: (String) 
 }
 
 @Composable
-private fun ResultadoFinalizadoSection(partido: Partido, prediccion: Prediccion?) {
-    if (prediccion == null) {
+private fun ResultadoFinalizadoSection(item: PartidoConPrediccion) {
+    if (item.prediccion == null) {
         Text(
             text = "Sin predicción registrada",
             style = MaterialTheme.typography.labelSmall,
@@ -442,16 +442,36 @@ private fun ResultadoFinalizadoSection(partido: Partido, prediccion: Prediccion?
         return
     }
     Row(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(
-            text = "Tu predicción: ${prediccion.golesLocal} - ${prediccion.golesVisitante}",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        val badge = calcularResultadoBadge(partido, prediccion)
-        if (badge != null) ResultadoBadge(badge)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Tu pred: ${item.prediccion.golesLocal} - ${item.prediccion.golesVisitante}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            val badge = calcularResultadoBadge(item.partido, item.prediccion)
+            if (badge != null) ResultadoBadge(badge)
+        }
+        if (item.puntosGanados != null) PuntosChip(item.puntosGanados)
     }
+}
+
+@Composable
+private fun PuntosChip(puntos: Int) {
+    val colorPositivo = MaterialTheme.colorScheme.primary
+    val colorNeutro = MaterialTheme.colorScheme.outline
+    val (texto, color) = if (puntos > 0) "+$puntos pts" to colorPositivo else "0 pts" to colorNeutro
+    Text(
+        text = texto,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = color,
+    )
 }
 
 @Composable
@@ -533,7 +553,7 @@ private fun prediccionFake() = Prediccion("u1", "p1", 2, 1, Instant.now(), Insta
 private fun PartidoCardAbiertoPreview() {
     QuinielaTheme {
         PartidoCard(
-            item = PartidoConPrediccion(partidoFake(), null, EstadoPrediccion.ABIERTO),
+            item = PartidoConPrediccion(partidoFake(), null, EstadoPrediccion.ABIERTO, null),
             lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
         )
@@ -545,14 +565,14 @@ private fun PartidoCardAbiertoPreview() {
 private fun PartidoCardConPrediccionPreview() {
     QuinielaTheme {
         PartidoCard(
-            item = PartidoConPrediccion(partidoFake(), prediccionFake(), EstadoPrediccion.ABIERTO),
+            item = PartidoConPrediccion(partidoFake(), prediccionFake(), EstadoPrediccion.ABIERTO, null),
             lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
         )
     }
 }
 
-@Preview(showBackground = true, name = "Partido — finalizado exacto")
+@Preview(showBackground = true, name = "Partido — finalizado exacto (+5 pts)")
 @Composable
 private fun PartidoCardFinalizadoPreview() {
     QuinielaTheme {
@@ -561,6 +581,7 @@ private fun PartidoCardFinalizadoPreview() {
                 partido = partidoFake(golesLocal = 2, golesVisitante = 1, estado = EstadoPartido.FINALIZADO),
                 prediccion = prediccionFake(),
                 estadoPrediccion = EstadoPrediccion.BLOQUEADO,
+                puntosGanados = 5,
             ),
             lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
@@ -573,7 +594,7 @@ private fun PartidoCardFinalizadoPreview() {
 private fun PartidoCardBloqueadoPreview() {
     QuinielaTheme {
         PartidoCard(
-            item = PartidoConPrediccion(partidoFake(estado = EstadoPartido.EN_VIVO), null, EstadoPrediccion.BLOQUEADO),
+            item = PartidoConPrediccion(partidoFake(estado = EstadoPartido.EN_VIVO), null, EstadoPrediccion.BLOQUEADO, null),
             lockAnticipacionMs = 30 * 60_000L,
             onGuardar = { _, _, _ -> },
         )
