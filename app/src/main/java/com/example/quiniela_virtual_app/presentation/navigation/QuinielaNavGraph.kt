@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.text.style.TextAlign
 import com.example.quiniela_virtual_app.presentation.shared.components.LoadingIndicator
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -46,6 +47,7 @@ import com.example.quiniela_virtual_app.presentation.auth.LoginViewModel
 import com.example.quiniela_virtual_app.presentation.leaderboard.LeaderboardScreen
 import com.example.quiniela_virtual_app.presentation.partidos.PartidosScreen
 import com.example.quiniela_virtual_app.presentation.perfil.PerfilScreen
+import com.example.quiniela_virtual_app.presentation.predicciones.PrediccionesScreen
 
 @Composable
 fun QuinielaNavGraph() {
@@ -78,11 +80,12 @@ private fun AppPrincipal(loginViewModel: LoginViewModel, esAdmin: Boolean) {
     Scaffold(bottomBar = { BarraNavegacion(navController, esAdmin) }) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Partidos.route,
+            startDestination = Screen.Predicciones.route,
             modifier = Modifier.padding(paddingValues),
         ) {
-            composable(Screen.Partidos.route)    { PartidosScreen() }
-            composable(Screen.Leaderboard.route) { LeaderboardScreen() }
+            composable(Screen.Predicciones.route) { PrediccionesScreen() }
+            composable(Screen.Partidos.route)     { PartidosScreen() }
+            composable(Screen.Leaderboard.route)  { LeaderboardScreen() }
             composable(Screen.Perfil.route)      {
                 PerfilScreen(onCerrarSesion = { loginViewModel.cerrarSesion() })
             }
@@ -127,6 +130,7 @@ private fun navegarA(navController: NavController, pantalla: Screen) {
 }
 
 private fun itemsNav(esAdmin: Boolean) = buildList {
+    add(NavItem(Screen.Predicciones, "Predecir", Icons.Default.Edit))
     add(NavItem(Screen.Partidos, "Partidos", Icons.Default.Home))
     add(NavItem(Screen.Leaderboard, "Posiciones", Icons.Default.Star))
     add(NavItem(Screen.Perfil, "Perfil", Icons.Default.Person))

@@ -19,9 +19,11 @@ class CalcularEstadoPrediccionUseCase @Inject constructor() {
         return evalPorEstado(partido, ahoraMs, lockMs)
     }
 
-    private fun evalPorEstado(partido: Partido, ahoraMs: Long, lockMs: Long): EstadoPrediccion =
-        if (partido.estado == EstadoPartido.PROGRAMADO) evalPorTiempo(partido, ahoraMs, lockMs)
-        else BLOQUEADO
+    private fun evalPorEstado(partido: Partido, ahoraMs: Long, lockMs: Long): EstadoPrediccion {
+        val abiertoPorTiempo = partido.estado == EstadoPartido.PROGRAMADO ||
+            partido.estado == EstadoPartido.SUSPENDIDO
+        return if (abiertoPorTiempo) evalPorTiempo(partido, ahoraMs, lockMs) else BLOQUEADO
+    }
 
     private fun evalUnlockTemporal(partido: Partido, ahoraMs: Long): EstadoPrediccion {
         val expiry = partido.lockOverrideExpiry ?: return BLOQUEADO

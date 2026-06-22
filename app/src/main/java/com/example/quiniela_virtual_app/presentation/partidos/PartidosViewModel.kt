@@ -214,3 +214,20 @@ class PartidosViewModel @Inject constructor(
         private const val FASE_GRUPOS = "Grupos"
     }
 }
+
+internal data class ResumenJornada(
+    val conPrediccion: Int,
+    val total: Int,
+    val puntosGanados: Int,
+    val hayFinalizados: Boolean,
+)
+
+internal fun resumenDe(seccion: PartidoJornadaSeccion): ResumenJornada {
+    val items = seccion.grupos.flatMap { it.items }
+    return ResumenJornada(
+        conPrediccion = items.count { it.prediccion != null },
+        total = items.size,
+        puntosGanados = items.mapNotNull { it.puntosGanados }.sum(),
+        hayFinalizados = items.any { it.partido.estado == EstadoPartido.FINALIZADO && it.prediccion != null },
+    )
+}

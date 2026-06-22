@@ -157,23 +157,6 @@ private fun PartidosPorSecciones(
     }
 }
 
-private data class ResumenJornada(
-    val conPrediccion: Int,
-    val total: Int,
-    val puntosGanados: Int,
-    val hayFinalizados: Boolean,
-)
-
-private fun resumenDe(seccion: PartidoJornadaSeccion): ResumenJornada {
-    val items = seccion.grupos.flatMap { it.items }
-    return ResumenJornada(
-        conPrediccion = items.count { it.prediccion != null },
-        total = items.size,
-        puntosGanados = items.mapNotNull { it.puntosGanados }.sum(),
-        hayFinalizados = items.any { it.partido.estado == EstadoPartido.FINALIZADO && it.prediccion != null },
-    )
-}
-
 @Composable
 private fun JornadaHeader(seccion: PartidoJornadaSeccion) {
     val resumen = resumenDe(seccion)
