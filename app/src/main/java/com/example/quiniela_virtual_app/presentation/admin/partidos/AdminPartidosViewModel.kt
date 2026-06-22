@@ -67,7 +67,10 @@ class AdminPartidosViewModel @Inject constructor(
 
     fun sincronizarDesdeApi() = ejecutarAccion {
         sincronizarUC().fold(
-            onSuccess = { n -> _accionEstado.value = "Se sincronizaron $n partidos" },
+            onSuccess = { n ->
+                _accionEstado.value = "Se sincronizaron $n partidos"
+                recalcularLeaderboard()
+            },
             onFailure = { e -> _accionEstado.value = e.message ?: "Error al sincronizar" },
         )
     }
@@ -110,7 +113,10 @@ class AdminPartidosViewModel @Inject constructor(
 
     fun forzarBloqueo(partido: Partido) = ejecutarAccion {
         setLockOverrideUC(partido.id, unlock = false, expiryMs = null).fold(
-            onSuccess = { _accionEstado.value = "Predicciones bloqueadas" },
+            onSuccess = {
+                _accionEstado.value = "Predicciones bloqueadas"
+                if (partido.estado == EstadoPartido.FINALIZADO) recalcularLeaderboard()
+            },
             onFailure = { e -> _accionEstado.value = e.message ?: "Error al bloquear" },
         )
     }

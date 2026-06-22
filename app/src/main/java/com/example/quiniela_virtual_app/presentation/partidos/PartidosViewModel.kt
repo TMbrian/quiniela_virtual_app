@@ -57,6 +57,9 @@ class PartidosViewModel @Inject constructor(
     private val _guardarError = MutableStateFlow<String?>(null)
     val guardarError: StateFlow<String?> = _guardarError.asStateFlow()
 
+    private val _mensajeExito = MutableStateFlow<String?>(null)
+    val mensajeExito: StateFlow<String?> = _mensajeExito.asStateFlow()
+
     private val _filtroEstado = MutableStateFlow<EstadoPartido?>(null)
     val filtroEstado: StateFlow<EstadoPartido?> = _filtroEstado.asStateFlow()
 
@@ -72,6 +75,7 @@ class PartidosViewModel @Inject constructor(
     init { cargar() }
 
     fun limpiarError() { _guardarError.value = null }
+    fun limpiarMensajeExito() { _mensajeExito.value = null }
 
     fun filtrarPor(estado: EstadoPartido?) { _filtroEstado.value = estado }
 
@@ -80,10 +84,15 @@ class PartidosViewModel @Inject constructor(
         val lockMs = lockMsActual() ?: return
         viewModelScope.launch {
             val prediccion = buildPrediccion(uid, partido.id, golesLocal, golesVisitante)
-            guardarPrediccionUC(prediccion, partido, lockMs).onFailure { e ->
-                _guardarError.value = e.message ?: "Error al guardar predicción"
-            }
+            guardarPrediccionUC(prediccion, partido, lockMs).fold(
+                onSuccess = { onPrediccionGuardada() },
+                onFailure = { e -> _guardarError.value = e.message ?: "Error al guardar predicción" },
+            )
         }
+    }
+
+    private fun onPrediccionGuardada() {
+        _mensajeExito.value = "Predicción guardada"
     }
 
     private fun lockMsActual(): Long? =

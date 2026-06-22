@@ -73,11 +73,15 @@ fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     val uiStateValue by viewModel.uiState.collectAsState()
     val filtro by viewModel.filtroEstado.collectAsState()
     val guardarError by viewModel.guardarError.collectAsState()
+    val mensajeExito by viewModel.mensajeExito.collectAsState()
     val lockMs = (uiStateValue as? UiState.Success)?.data?.lockAnticipacionMs ?: 60 * 60_000L
     val snackbarHost = remember { SnackbarHostState() }
 
     LaunchedEffect(guardarError) {
         guardarError?.let { snackbarHost.showSnackbar(it); viewModel.limpiarError() }
+    }
+    LaunchedEffect(mensajeExito) {
+        mensajeExito?.let { snackbarHost.showSnackbar(it); viewModel.limpiarMensajeExito() }
     }
 
     Box(Modifier.fillMaxSize()) {
