@@ -85,7 +85,9 @@ private fun AppPrincipal(loginViewModel: LoginViewModel, esAdmin: Boolean) {
             startDestination = Screen.Predicciones.route,
             modifier = Modifier.padding(paddingValues),
         ) {
-            composable(Screen.Predicciones.route) { PrediccionesScreen() }
+            composable(Screen.Predicciones.route) {
+                PrediccionesScreen(onVerPartido = { navegarA(navController, Screen.Partidos) })
+            }
             composable(Screen.Historial.route)    { HistorialScreen() }
             composable(Screen.Partidos.route)     { PartidosScreen() }
             composable(Screen.Leaderboard.route)  { LeaderboardScreen() }

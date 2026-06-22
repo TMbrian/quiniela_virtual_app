@@ -19,11 +19,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,11 +54,13 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     val secciones by viewModel.secciones.collectAsState()
     val filtroJornada by viewModel.filtroJornada.collectAsState()
     val jornadasDisponibles by viewModel.jornadasDisponibles.collectAsState()
+    val refreshing by viewModel.refreshing.collectAsState()
     Column(Modifier.fillMaxSize()) {
         if (jornadasDisponibles.size > 1) {
             JornadaFiltroChips(
@@ -66,10 +70,16 @@ fun HistorialScreen(viewModel: PartidosViewModel = hiltViewModel()) {
             )
             HorizontalDivider()
         }
-        when (val estado = secciones) {
-            is UiState.Loading -> LoadingIndicator()
-            is UiState.Error   -> ErrorMessage(estado.mensaje)
-            is UiState.Success -> ContenidoHistorial(filtrarHistorial(estado.data))
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = viewModel::reiniciar,
+            modifier = Modifier.weight(1f),
+        ) {
+            when (val estado = secciones) {
+                is UiState.Loading -> LoadingIndicator()
+                is UiState.Error   -> ErrorMessage(estado.mensaje)
+                is UiState.Success -> ContenidoHistorial(filtrarHistorial(estado.data))
+            }
         }
     }
 }

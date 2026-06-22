@@ -71,7 +71,10 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PrediccionesScreen(viewModel: PartidosViewModel = hiltViewModel()) {
+fun PrediccionesScreen(
+    onVerPartido: () -> Unit = {},
+    viewModel: PartidosViewModel = hiltViewModel(),
+) {
     val secciones by viewModel.secciones.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val guardarError by viewModel.guardarError.collectAsState()
@@ -112,6 +115,7 @@ fun PrediccionesScreen(viewModel: PartidosViewModel = hiltViewModel()) {
                         secciones = filtrarSoloAbiertas(estado.data),
                         lockAnticipacionMs = lockMs,
                         proximoPartido = proximoPartido,
+                        onVerPartido = onVerPartido,
                         onGuardar = viewModel::guardarPrediccion,
                     )
                 }
@@ -136,6 +140,7 @@ private fun ContenidoPredicciones(
     secciones: List<PartidoJornadaSeccion>,
     lockAnticipacionMs: Long,
     proximoPartido: PartidoConPrediccion?,
+    onVerPartido: () -> Unit,
     onGuardar: (Partido, Int, Int) -> Unit,
 ) {
     if (secciones.isEmpty() && proximoPartido == null) {
@@ -153,7 +158,7 @@ private fun ContenidoPredicciones(
         }
         if (proximoPartido != null) {
             item(key = "proximo") {
-                ProximoPartidoCard(item = proximoPartido)
+                ProximoPartidoCard(item = proximoPartido, onVerPartido = onVerPartido)
             }
         }
         secciones.forEach { seccion ->
@@ -178,8 +183,9 @@ private fun ContenidoPredicciones(
 }
 
 @Composable
-private fun ProximoPartidoCard(item: PartidoConPrediccion) {
+private fun ProximoPartidoCard(item: PartidoConPrediccion, onVerPartido: () -> Unit) {
     Card(
+        onClick = onVerPartido,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
@@ -217,6 +223,15 @@ private fun ProximoPartidoCard(item: PartidoConPrediccion) {
                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.65f),
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Ver en Partidos →",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End,
             )
         }
     }
