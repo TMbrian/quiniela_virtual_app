@@ -283,11 +283,21 @@ private fun CabeceraPartidoCard(partido: Partido) {
     ) {
         EstadoBadge(partido.estado)
         Spacer(Modifier.weight(1f))
-        Text(
-            text = "J${partido.jornada}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-        )
+        Box(
+            modifier = Modifier
+                .background(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(50),
+                )
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+        ) {
+            Text(
+                text = if (partido.fase == "Grupos") "J${partido.jornada}" else partido.fase,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
     }
 }
 
