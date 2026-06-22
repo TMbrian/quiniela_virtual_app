@@ -43,7 +43,7 @@ android {
         }
         create("admin") {
             dimension = "target"
-            applicationIdSuffix = ".admin"
+            applicationId = "com.example.quiniela_virtual_app.admin"
             versionNameSuffix = "-admin"
             buildConfigField("Boolean", "IS_ADMIN_BUILD", "true")
         }
@@ -51,9 +51,12 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 
