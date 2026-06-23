@@ -84,7 +84,9 @@ fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
     val uiStateValue by viewModel.uiState.collectAsState()
     val filtro by viewModel.filtroEstado.collectAsState()
     val filtroJornada by viewModel.filtroJornada.collectAsState()
+    val filtroGrupo by viewModel.filtroGrupo.collectAsState()
     val jornadasDisponibles by viewModel.jornadasDisponibles.collectAsState()
+    val gruposDisponibles by viewModel.gruposDisponibles.collectAsState()
     val guardarError by viewModel.guardarError.collectAsState()
     val mensajeExito by viewModel.mensajeExito.collectAsState()
     val refreshing by viewModel.refreshing.collectAsState()
@@ -111,6 +113,9 @@ fun PartidosScreen(viewModel: PartidosViewModel = hiltViewModel()) {
                     filtroJornada = filtroJornada,
                     onJornadaChange = viewModel::filtrarJornada,
                     jornadasDisponibles = jornadasDisponibles,
+                    filtroGrupo = filtroGrupo,
+                    onGrupoChange = viewModel::filtrarGrupo,
+                    gruposDisponibles = gruposDisponibles,
                 )
                 HorizontalDivider()
                 when (val estado = secciones) {
@@ -142,6 +147,9 @@ private fun FiltrosChips(
     filtroJornada: Int?,
     onJornadaChange: (Int?) -> Unit,
     jornadasDisponibles: List<Int>,
+    filtroGrupo: String?,
+    onGrupoChange: (String?) -> Unit,
+    gruposDisponibles: List<String>,
 ) {
     Column {
         LazyRow(
@@ -173,6 +181,27 @@ private fun FiltrosChips(
                         selected = filtroJornada == jornada,
                         onClick = { onJornadaChange(jornada) },
                         label = { Text("J$jornada") },
+                    )
+                }
+            }
+        }
+        if (gruposDisponibles.size > 1) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item(key = "grupo_todos") {
+                    FilterChip(
+                        selected = filtroGrupo == null,
+                        onClick = { onGrupoChange(null) },
+                        label = { Text("Todos") },
+                    )
+                }
+                items(gruposDisponibles, key = { "grupo_$it" }) { grupo ->
+                    FilterChip(
+                        selected = filtroGrupo == grupo,
+                        onClick = { onGrupoChange(grupo) },
+                        label = { Text("Grupo $grupo") },
                     )
                 }
             }

@@ -68,19 +68,32 @@ class PartidosViewModel @Inject constructor(
     private val _filtroJornada = MutableStateFlow<Int?>(null)
     val filtroJornada: StateFlow<Int?> = _filtroJornada.asStateFlow()
 
+    private val _filtroGrupo = MutableStateFlow<String?>(null)
+    val filtroGrupo: StateFlow<String?> = _filtroGrupo.asStateFlow()
+
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
 
     private var cargarJob: Job? = null
 
     val secciones: StateFlow<UiState<List<PartidoJornadaSeccion>>> =
-        combine(_uiState, _filtroEstado, _filtroJornada) { estado, filtro, jornada ->
+        combine(_uiState, _filtroEstado, _filtroJornada, _filtroGrupo) { estado, filtro, jornada, grupo ->
             when (estado) {
                 is UiState.Loading -> UiState.Loading
                 is UiState.Error   -> UiState.Error(estado.mensaje)
-                is UiState.Success -> UiState.Success(agruparEnSecciones(estado.data.partidos, filtro, jornada))
+                is UiState.Success -> UiState.Success(agruparEnSecciones(estado.data.partidos, filtro, jornada, grupo))
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState.Loading)
+
+    val gruposDisponibles: StateFlow<List<String>> =
+        _uiState.map { estado ->
+            if (estado !is UiState.Success) return@map emptyList()
+            estado.data.partidos
+                .filter { it.partido.fase == FASE_GRUPOS && it.partido.grupo.isNotBlank() }
+                .map { it.partido.grupo }
+                .distinct()
+                .sorted()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val jornadasDisponibles: StateFlow<List<Int>> =
         _uiState.map { estado ->
@@ -113,6 +126,7 @@ class PartidosViewModel @Inject constructor(
 
     fun filtrarPor(estado: EstadoPartido?) { _filtroEstado.value = estado }
     fun filtrarJornada(jornada: Int?) { _filtroJornada.value = jornada }
+    fun filtrarGrupo(grupo: String?)  { _filtroGrupo.value = grupo }
 
     fun guardarPrediccion(partido: Partido, golesLocal: Int, golesVisitante: Int) {
         val uid = auth.currentUser?.uid ?: return
@@ -196,12 +210,24 @@ class PartidosViewModel @Inject constructor(
         items: List<PartidoConPrediccion>,
         filtro: EstadoPartido?,
         filtroJornada: Int?,
+        filtroGrupo: String?,
     ): List<PartidoJornadaSeccion> {
         val filtrados = filtrarItems(items, filtro)
         val (deGrupos, deEliminacion) = filtrados.partition { it.partido.fase == FASE_GRUPOS }
-        val gruposFiltrados = if (filtroJornada != null) deGrupos.filter { it.partido.jornada == filtroJornada } else deGrupos
-        val eliminacionFinal = if (filtroJornada != null) emptyList() else deEliminacion
+        val gruposFiltrados = filtrarGruposYJornada(deGrupos, filtroJornada, filtroGrupo)
+        val eliminacionFinal = if (filtroJornada != null || filtroGrupo != null) emptyList() else deEliminacion
         return seccionesGrupos(gruposFiltrados) + seccionesEliminacion(eliminacionFinal)
+    }
+
+    private fun filtrarGruposYJornada(
+        items: List<PartidoConPrediccion>,
+        filtroJornada: Int?,
+        filtroGrupo: String?,
+    ): List<PartidoConPrediccion> {
+        var resultado = items
+        if (filtroJornada != null) resultado = resultado.filter { it.partido.jornada == filtroJornada }
+        if (filtroGrupo != null)   resultado = resultado.filter { it.partido.grupo == filtroGrupo }
+        return resultado
     }
 
     private fun filtrarItems(items: List<PartidoConPrediccion>, filtro: EstadoPartido?): List<PartidoConPrediccion> {
@@ -245,13 +271,14 @@ class PartidosViewModel @Inject constructor(
             }
 
     private fun ordenFase(fase: String): Int = when (fase) {
-        "Grupos"    -> 0
-        "Octavos"   -> 1
-        "Cuartos"   -> 2
-        "Semifinal" -> 3
-        "3er Lugar" -> 4
-        "Final"     -> 5
-        else        -> 99
+        "Grupos"                     -> 0
+        "Dieciseisavos"              -> 1
+        "Octavos", "Octavos de final" -> 2
+        "Cuartos", "Cuartos de final" -> 3
+        "Semifinal"                  -> 4
+        "3er Lugar"                  -> 5
+        "Final"                      -> 6
+        else                         -> 99
     }
 
     companion object {

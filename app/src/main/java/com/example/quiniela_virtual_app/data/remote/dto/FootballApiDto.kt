@@ -118,8 +118,9 @@ private fun String?.toEstadoPartido(): EstadoPartido = when (this) {
  */
 private fun String.toFase(): String = when (this) {
     "GROUP_STAGE"    -> "Grupos"
-    "ROUND_OF_16"    -> "Octavos"
-    "QUARTER_FINALS" -> "Cuartos"
+    "ROUND_OF_32"    -> "Dieciseisavos"
+    "ROUND_OF_16"    -> "Octavos de final"
+    "QUARTER_FINALS" -> "Cuartos de final"
     "SEMI_FINALS"    -> "Semifinal"
     "THIRD_PLACE"    -> "3er Lugar"
     "FINAL"          -> "Final"

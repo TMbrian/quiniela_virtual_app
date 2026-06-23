@@ -5,6 +5,7 @@ sealed class Screen(val route: String) {
     data object Predicciones   : Screen("predicciones")
     data object Historial      : Screen("historial")
     data object Partidos       : Screen("partidos")
+    data object Grupos         : Screen("grupos")
     data object Leaderboard    : Screen("leaderboard")
     data object Perfil         : Screen("perfil")
     data object AdminDashboard : Screen("admin/dashboard")
